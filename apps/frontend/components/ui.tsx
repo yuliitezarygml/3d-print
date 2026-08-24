@@ -1,0 +1,8 @@
+"use client";
+import { X } from "lucide-react";
+
+export function PageHeader({eyebrow,title,description,actions}:{eyebrow?:string;title:string;description?:string;actions?:React.ReactNode}){return <div className="page-header"><div>{eyebrow&&<p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{description&&<p>{description}</p>}</div>{actions&&<div className="header-actions">{actions}</div>}</div>}
+export function Status({value}:{value:string}){const labels:Record<string,string>={IDLE:"Свободен",PRINTING:"Печатает",PAUSED:"Пауза",OFFLINE:"Не в сети",ERROR:"Ошибка",MAINTENANCE:"Сервис",QUEUED:"В очереди",READY:"Готов",SUCCESS:"Завершено",FAILED:"Неудача",CANCELLED:"Отменено",NEW:"Принят",CONFIRMED:"Подтверждён",WAITING:"Ожидает",READY_TO_PRINT:"Готов к печати",POST_PROCESSING:"Обработка",COMPLETED:"Выдан"};return <span className={`status ${value.toLowerCase()}`}><i/>{labels[value]??value}</span>}
+export function Modal({title,children,onClose,size="normal"}:{title:string;children:React.ReactNode;onClose:()=>void;size?:"normal"|"wide"}){return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`modal ${size==="wide"?"modal-wide":""}`}><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose}><X size={19}/></button></div>{children}</div></div>}
+export function Empty({children}:{children:React.ReactNode}){return <div className="empty">{children}</div>}
+export function ErrorNote({error}:{error:unknown}){return <p className="form-error">{error instanceof Error?error.message:"Произошла ошибка"}</p>}

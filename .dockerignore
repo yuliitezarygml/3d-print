@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+**/node_modules
+**/.next
+**/coverage
+backups
+uploads
+*.log
+

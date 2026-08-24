@@ -1,0 +1,26 @@
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+  backend:
+    image: golang:1.24-alpine
+    working_dir: /workspace/apps/backend
+    command: ["go", "run", "./cmd/api"]
+    volumes:
+      - .:/workspace
+      - go_cache:/go/pkg/mod
+    ports:
+      - "${API_PORT:-8080}:8080"
+  frontend:
+    image: node:22-alpine
+    working_dir: /workspace/apps/frontend
+    command: ["sh", "-c", "npm install && npm run dev"]
+    volumes:
+      - .:/workspace
+      - frontend_modules:/workspace/apps/frontend/node_modules
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  go_cache:
+  frontend_modules:
