@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Box, Check, Copy, ExternalLink, FileDown, Plus } from "lucide-react";
+import { Box, Check, Copy, ExternalLink, FileDown, Images, Plus, Send } from "lucide-react";
 import { api, downloadAuthenticated, money } from "@/lib/api";
 import { ErrorNote, Modal, PageHeader, Status } from "@/components/ui";
 
@@ -13,12 +13,13 @@ type Customer={id:string;name:string};
 type Model={id:string;name:string;originalFilename:string;format:string;customerId?:string;customerName?:string};
 type CreatedOrder={id:string;number:string;trackingCode:string};
 
-const statusOptions=[["NEW","Заказ принят"],["CONFIRMED","Подтверждён"],["WAITING","Ожидает"],["READY_TO_PRINT","Готов к печати"],["PRINTING","Печатается"],["POST_PROCESSING","Постобработка"],["READY","Готов к выдаче"],["COMPLETED","Выдан"],["CANCELLED","Отменён"]];
+const statusOptions=[["DRAFT","Заявка с сайта"],["NEW","Заказ принят"],["CONFIRMED","Подтверждён"],["WAITING","Ожидает"],["READY_TO_PRINT","Готов к печати"],["PRINTING","Печатается"],["POST_PROCESSING","Постобработка"],["READY","Готов к выдаче"],["COMPLETED","Выдан"],["CANCELLED","Отменён"]];
 
 export default function Orders(){
   const [open,setOpen]=useState(false);
   const [created,setCreated]=useState<CreatedOrder|null>(null);
   const [receiptError,setReceiptError]=useState<unknown>(null);
+  const [processOrder,setProcessOrder]=useState<Order|null>(null);
   const queryClient=useQueryClient();
   const orders=useQuery({queryKey:["orders"],queryFn:()=>api<Order[]>("/api/orders")});
   const customers=useQuery({queryKey:["customers"],queryFn:()=>api<Customer[]>("/api/customers")});
@@ -33,10 +34,19 @@ export default function Orders(){
       <div className="tracking-code"><span>Код клиента</span><strong>{order.trackingCode}</strong><button className="icon-button" title="Копировать код" onClick={()=>navigator.clipboard.writeText(order.trackingCode)}><Copy size={15}/></button></div>
       <div className="order-models">{order.models.length?order.models.map(model=><span key={model.id}><Box size={14}/>{model.name}</span>):<small>Модели пока не прикреплены</small>}</div>
       <div className="order-money"><div><span>Стоимость</span><strong>{money(order.sellingPrice)}</strong></div><div><span>Оплачено</span><strong>{money(order.paidAmount)}</strong></div><div><span>Остаток</span><strong>{money(order.balanceDue)}</strong></div></div>
-      <div className="order-card-actions"><select aria-label={`Статус ${order.number}`} value={order.status} onChange={event=>status.mutate({id:order.id,value:event.target.value})}>{statusOptions.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select><button className="button" onClick={()=>{setReceiptError(null);downloadAuthenticated(`/api/orders/${order.id}/receipt.pdf`,`receipt-${order.number}.pdf`).catch(setReceiptError)}}><FileDown size={14}/>PDF-квитанция</button><Link className="button" href={`/track/${order.trackingCode}`} target="_blank">Страница клиента <ExternalLink size={14}/></Link></div>
+      <div className="order-card-actions"><select aria-label={`Статус ${order.number}`} value={order.status} onChange={event=>status.mutate({id:order.id,value:event.target.value})}>{statusOptions.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select><button className="button" onClick={()=>setProcessOrder(order)}><Images size={14}/>Фото и история</button><button className="button" onClick={()=>{setReceiptError(null);downloadAuthenticated(`/api/orders/${order.id}/receipt.pdf`,`receipt-${order.number}.pdf`).catch(setReceiptError)}}><FileDown size={14}/>PDF-квитанция</button><Link className="button" href={`/track/${order.trackingCode}`} target="_blank">Страница клиента <ExternalLink size={14}/></Link></div>
     </article>)}</div>
     {open&&<Modal title="Новый заказ" size="wide" onClose={()=>setOpen(false)}><OrderForm customers={customers.data??[]} models={models.data??[]} busy={add.isPending} error={add.error} onCancel={()=>setOpen(false)} onSubmit={value=>add.mutate(value)}/></Modal>}
+    {processOrder&&<Modal title={`Процесс · ${processOrder.number}`} size="wide" onClose={()=>setProcessOrder(null)}><OrderProcess order={processOrder}/></Modal>}
   </>;
+}
+
+type OrderEvent={id:string;title:string;message:string;eventType:string;createdAt:string};
+function OrderProcess({order}:{order:Order}){
+  const queryClient=useQueryClient();const events=useQuery({queryKey:["order-events",order.id],queryFn:()=>api<OrderEvent[]>(`/api/orders/${order.id}/events`)});
+  const note=useMutation({mutationFn:(body:Record<string,unknown>)=>api(`/api/orders/${order.id}/events`,{method:"POST",body:JSON.stringify(body)}),onSuccess:()=>queryClient.invalidateQueries({queryKey:["order-events",order.id]})});
+  const photo=useMutation({mutationFn:({file,caption}:{file:File;caption:string})=>{const body=new FormData();body.set("file",file);body.set("caption",caption);body.set("isPublic","true");return api(`/api/orders/${order.id}/photos`,{method:"POST",body})},onSuccess:()=>queryClient.invalidateQueries({queryKey:["order-events",order.id]})});
+  return <div className="process-layout"><section><h3>История заказа</h3><div className="admin-history">{events.data?.slice().reverse().map(event=><article key={event.id}><i/><div><strong>{event.title}</strong>{event.message&&<p>{event.message}</p>}<small>{new Date(event.createdAt).toLocaleString("ru-MD")}</small></div></article>)}</div></section><section className="process-actions"><form onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);note.mutate({title:data.get("title"),message:data.get("message"),isPublic:true});event.currentTarget.reset()}}><h3>Добавить этап</h3><label className="field">Название<input name="title" required placeholder="Проверка качества"/></label><label className="field">Комментарий<textarea name="message" rows={2}/></label><button className="button primary" disabled={note.isPending}><Send size={14}/>Опубликовать клиенту</button></form><form onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);const file=data.get("file");if(file instanceof File&&file.size)photo.mutate({file,caption:String(data.get("caption")||"")})}}><h3>Фото процесса</h3><label className="field">Фотография<input name="file" type="file" accept=".png,.jpg,.jpeg,.webp" required/></label><label className="field">Подпись<input name="caption" placeholder="Первый слой напечатан"/></label><button className="button" disabled={photo.isPending}><Images size={14}/>Загрузить</button></form>{(note.error||photo.error)&&<ErrorNote error={note.error||photo.error}/>}</section></div>;
 }
 
 function OrderForm({customers,models,busy,error,onCancel,onSubmit}:{customers:Customer[];models:Model[];busy:boolean;error:unknown;onCancel:()=>void;onSubmit:(value:Record<string,unknown>)=>void}){

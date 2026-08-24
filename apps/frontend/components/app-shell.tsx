@@ -3,11 +3,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Box, LayoutDashboard, Printer, PackageOpen, ShoppingBag, Layers3, ListTodo, Users, Settings, Search, LogOut, Moon, Sun, Menu, X } from "lucide-react";
+import { Box, LayoutDashboard, Printer, PackageOpen, ShoppingBag, Layers3, ListTodo, Users, Settings, Search, LogOut, Moon, Sun, Menu, X, CalendarDays } from "lucide-react";
 import { api, session } from "@/lib/api";
 
 const nav = [
-  { href:"/dashboard",label:"Обзор",icon:LayoutDashboard },{ href:"/orders",label:"Заказы",icon:ShoppingBag },{ href:"/jobs",label:"Очередь печати",icon:ListTodo },{ href:"/models",label:"3D-модели",icon:Layers3 },{ href:"/inventory",label:"Склад",icon:PackageOpen },{ href:"/printers",label:"Принтеры",icon:Printer },{ href:"/customers",label:"Клиенты",icon:Users },{ href:"/settings",label:"Настройки",icon:Settings },
+  { href:"/dashboard",label:"Обзор",icon:LayoutDashboard },{ href:"/orders",label:"Заказы",icon:ShoppingBag },{ href:"/jobs",label:"Очередь печати",icon:ListTodo },{ href:"/calendar",label:"Календарь",icon:CalendarDays },{ href:"/models",label:"3D-модели",icon:Layers3 },{ href:"/inventory",label:"Склад",icon:PackageOpen },{ href:"/printers",label:"Принтеры",icon:Printer },{ href:"/customers",label:"Клиенты",icon:Users },{ href:"/settings",label:"Настройки",icon:Settings },
 ];
 
 const subscribeToMount = () => () => undefined;

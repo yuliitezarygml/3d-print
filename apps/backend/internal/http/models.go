@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +25,7 @@ import (
 
 func (s *Server) listModels(w http.ResponseWriter, r *http.Request) {
 	customerID := strings.TrimSpace(r.URL.Query().Get("customerId"))
-	rows, err := s.db.Query(r.Context(), `SELECT m.id,m.name,m.original_filename,m.format,m.file_size_bytes,m.dimensions_x_mm,m.dimensions_y_mm,m.dimensions_z_mm,m.volume_cm3,m.triangle_count,m.version,m.created_at,m.customer_id,c.name,m.preview_path FROM models m LEFT JOIN customers c ON c.id=m.customer_id WHERE ($1='' OR m.customer_id::text=$1) ORDER BY m.created_at DESC`, customerID)
+	rows, err := s.db.Query(r.Context(), `SELECT m.id,m.name,m.original_filename,m.format,m.file_size_bytes,m.dimensions_x_mm,m.dimensions_y_mm,m.dimensions_z_mm,m.volume_cm3,m.triangle_count,m.version,m.created_at,m.customer_id,c.name,m.preview_path,m.estimated_print_minutes,m.estimated_filament_grams,m.slicer_metadata FROM models m LEFT JOIN customers c ON c.id=m.customer_id WHERE ($1='' OR m.customer_id::text=$1) ORDER BY m.created_at DESC`, customerID)
 	if err != nil {
 		writeJSON(w, 500, apiError{Error: "could not load models"})
 		return
@@ -36,15 +38,20 @@ func (s *Server) listModels(w http.ResponseWriter, r *http.Request) {
 		var x, y, z, volume *float64
 		var triangles *int64
 		var customerID, customerName, previewPath *string
+		var estimatedMinutes *int
+		var estimatedGrams *float64
+		var slicerMetadata []byte
 		var version int
 		var created time.Time
-		if rows.Scan(&id, &name, &filename, &format, &size, &x, &y, &z, &volume, &triangles, &version, &created, &customerID, &customerName, &previewPath) == nil {
+		if rows.Scan(&id, &name, &filename, &format, &size, &x, &y, &z, &volume, &triangles, &version, &created, &customerID, &customerName, &previewPath, &estimatedMinutes, &estimatedGrams, &slicerMetadata) == nil {
 			var previewURL *string
 			if previewPath != nil {
 				value := "/api/models/" + id + "/preview"
 				previewURL = &value
 			}
-			items = append(items, map[string]any{"id": id, "name": name, "originalFilename": filename, "format": format, "fileSizeBytes": size, "dimensionsXmm": x, "dimensionsYmm": y, "dimensionsZmm": z, "volumeCm3": volume, "triangleCount": triangles, "version": version, "createdAt": created, "customerId": customerID, "customerName": customerName, "previewUrl": previewURL, "fileUrl": "/api/models/" + id + "/file"})
+			metadata := map[string]any{}
+			_ = json.Unmarshal(slicerMetadata, &metadata)
+			items = append(items, map[string]any{"id": id, "name": name, "originalFilename": filename, "format": format, "fileSizeBytes": size, "dimensionsXmm": x, "dimensionsYmm": y, "dimensionsZmm": z, "volumeCm3": volume, "triangleCount": triangles, "version": version, "createdAt": created, "customerId": customerID, "customerName": customerName, "previewUrl": previewURL, "fileUrl": "/api/models/" + id + "/file", "estimatedPrintMinutes": estimatedMinutes, "estimatedFilamentGrams": estimatedGrams, "slicerMetadata": metadata})
 		}
 	}
 	writeJSON(w, 200, items)
@@ -63,8 +70,8 @@ func (s *Server) uploadModel(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if ext != ".stl" && ext != ".obj" && ext != ".3mf" {
-		badRequest(w, "only STL, OBJ and 3MF files are supported")
+	if ext != ".stl" && ext != ".obj" && ext != ".3mf" && ext != ".gcode" && ext != ".gco" {
+		badRequest(w, "only STL, OBJ, 3MF and G-code files are supported")
 		return
 	}
 	probe := make([]byte, 512)
@@ -78,22 +85,18 @@ func (s *Server) uploadModel(w http.ResponseWriter, r *http.Request) {
 		badRequest(w, "could not read uploaded file")
 		return
 	}
-	dir := filepath.Join(s.cfg.UploadDir, "models")
-	if err = os.MkdirAll(dir, 0750); err != nil {
-		writeJSON(w, 500, apiError{Error: "upload storage unavailable"})
-		return
-	}
 	storageName := uuid.NewString() + ext
-	path := filepath.Join(dir, storageName)
-	out, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0640)
+	storageKey := modelObjectKey(storageName)
+	temp, err := os.CreateTemp("", "printforge-model-*"+ext)
 	if err != nil {
 		writeJSON(w, 500, apiError{Error: "could not store file"})
 		return
 	}
-	written, copyErr := io.Copy(out, io.LimitReader(file, s.cfg.MaxModelFileBytes+1))
-	closeErr := out.Close()
+	path := temp.Name()
+	defer os.Remove(path)
+	written, copyErr := io.Copy(temp, io.LimitReader(file, s.cfg.MaxModelFileBytes+1))
+	closeErr := temp.Close()
 	if copyErr != nil || closeErr != nil || written > s.cfg.MaxModelFileBytes {
-		_ = os.Remove(path)
 		badRequest(w, "file exceeds configured size limit")
 		return
 	}
@@ -106,7 +109,6 @@ func (s *Server) uploadModel(w http.ResponseWriter, r *http.Request) {
 	if value := strings.TrimSpace(r.FormValue("customerId")); value != "" {
 		var exists bool
 		if err := s.db.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM customers WHERE id=$1)`, value).Scan(&exists); err != nil || !exists {
-			_ = os.Remove(path)
 			badRequest(w, "customer not found")
 			return
 		}
@@ -123,18 +125,43 @@ func (s *Server) uploadModel(w http.ResponseWriter, r *http.Request) {
 			triangles = &info.Triangles
 		}
 	}
+	estimatedMinutes, estimatedGrams, slicerMetadata := analyseSlicerEstimate(path, ext)
 	var previewPath *string
+	var previewTemp string
 	if ext == ".3mf" {
-		if extracted, previewErr := extract3MFPreview(path, dir, strings.TrimSuffix(storageName, ext)); previewErr == nil && extracted != "" {
-			previewPath = &extracted
+		if extracted, previewErr := extract3MFPreview(path, filepath.Dir(path), strings.TrimSuffix(filepath.Base(path), ext)); previewErr == nil && extracted != "" {
+			previewTemp = filepath.Join(filepath.Dir(path), extracted)
+			previewKey := modelObjectKey(strings.TrimSuffix(storageName, ext) + "-preview.png")
+			previewPath = &previewKey
 		}
 	}
+	stored, err := os.Open(path)
+	if err != nil || s.storage.Put(r.Context(), storageKey, stored, written, modelMime(ext)) != nil {
+		if stored != nil {
+			_ = stored.Close()
+		}
+		writeJSON(w, 500, apiError{Error: "could not store file"})
+		return
+	}
+	_ = stored.Close()
+	if previewPath != nil {
+		previewFile, previewErr := os.Open(previewTemp)
+		if previewErr == nil {
+			if info, statErr := previewFile.Stat(); statErr == nil {
+				if putErr := s.storage.Put(r.Context(), *previewPath, previewFile, info.Size(), "image/png"); putErr != nil {
+					previewPath = nil
+				}
+			}
+			_ = previewFile.Close()
+		}
+		_ = os.Remove(previewTemp)
+	}
 	var id string
-	err = s.db.QueryRow(r.Context(), `INSERT INTO models(name,original_filename,storage_path,mime_type,file_size_bytes,format,dimensions_x_mm,dimensions_y_mm,dimensions_z_mm,volume_cm3,triangle_count,customer_id,preview_path)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)RETURNING id`, name, filepath.Base(header.Filename), storageName, modelMime(ext), written, format, x, y, z, volume, triangles, customerID, previewPath).Scan(&id)
+	err = s.db.QueryRow(r.Context(), `INSERT INTO models(name,original_filename,storage_path,mime_type,file_size_bytes,format,dimensions_x_mm,dimensions_y_mm,dimensions_z_mm,volume_cm3,triangle_count,customer_id,preview_path,estimated_print_minutes,estimated_filament_grams,slicer_metadata)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)RETURNING id`, name, filepath.Base(header.Filename), storageKey, modelMime(ext), written, format, x, y, z, volume, triangles, customerID, previewPath, estimatedMinutes, estimatedGrams, slicerMetadata).Scan(&id)
 	if err != nil {
-		_ = os.Remove(path)
+		_ = s.storage.Remove(r.Context(), storageKey)
 		if previewPath != nil {
-			_ = os.Remove(filepath.Join(dir, filepath.Base(*previewPath)))
+			_ = s.storage.Remove(r.Context(), *previewPath)
 		}
 		writeJSON(w, 500, apiError{Error: "could not register model"})
 		return
@@ -145,7 +172,9 @@ func (s *Server) uploadModel(w http.ResponseWriter, r *http.Request) {
 		value := "/api/models/" + id + "/preview"
 		previewURL = &value
 	}
-	writeJSON(w, 201, map[string]any{"id": id, "name": name, "originalFilename": filepath.Base(header.Filename), "format": format, "fileSizeBytes": written, "dimensionsXmm": x, "dimensionsYmm": y, "dimensionsZmm": z, "volumeCm3": volume, "triangleCount": triangles, "customerId": customerID, "previewUrl": previewURL, "fileUrl": "/api/models/" + id + "/file"})
+	metadata := map[string]any{}
+	_ = json.Unmarshal(slicerMetadata, &metadata)
+	writeJSON(w, 201, map[string]any{"id": id, "name": name, "originalFilename": filepath.Base(header.Filename), "format": format, "fileSizeBytes": written, "dimensionsXmm": x, "dimensionsYmm": y, "dimensionsZmm": z, "volumeCm3": volume, "triangleCount": triangles, "customerId": customerID, "previewUrl": previewURL, "fileUrl": "/api/models/" + id + "/file", "estimatedPrintMinutes": estimatedMinutes, "estimatedFilamentGrams": estimatedGrams, "slicerMetadata": metadata})
 }
 
 // BackfillModelAnalysis fills geometry metadata for models uploaded by older
@@ -178,7 +207,10 @@ func (s *Server) BackfillModelAnalysis(ctx context.Context) error {
 	var analysisErrors []error
 	for _, model := range pending {
 		ext := "." + strings.ToLower(model.format)
-		path := filepath.Join(s.cfg.UploadDir, "models", filepath.Base(model.storage))
+		path, ok := s.storage.LocalPath(model.storage)
+		if !ok {
+			continue
+		}
 		info, err := analyseModel(path, ext)
 		if err != nil {
 			analysisErrors = append(analysisErrors, fmt.Errorf("analyse model %s: %w", model.id, err))
@@ -208,21 +240,16 @@ func (s *Server) serveModelFile(w http.ResponseWriter, r *http.Request, id strin
 		writeJSON(w, 404, apiError{Error: "model not found"})
 		return
 	}
-	path := filepath.Join(s.cfg.UploadDir, "models", filepath.Base(storage))
-	file, err := os.Open(path)
+	file, _, _, err := s.storage.Open(r.Context(), storage)
 	if err != nil {
 		writeJSON(w, 404, apiError{Error: "model file not found"})
 		return
 	}
 	defer file.Close()
-	info, err := file.Stat()
-	if err != nil {
-		writeJSON(w, 500, apiError{Error: "could not read model"})
-		return
-	}
 	w.Header().Set("Content-Type", mime)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", strings.ReplaceAll(filename, "\"", "")))
-	http.ServeContent(w, r, filename, info.ModTime(), file)
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	_, _ = io.Copy(w, file)
 }
 
 func (s *Server) modelPreview(w http.ResponseWriter, r *http.Request) {
@@ -235,21 +262,15 @@ func (s *Server) serveModelPreview(w http.ResponseWriter, r *http.Request, id st
 		writeJSON(w, 404, apiError{Error: "model preview not found"})
 		return
 	}
-	path := filepath.Join(s.cfg.UploadDir, "models", filepath.Base(storage))
-	file, err := os.Open(path)
+	file, _, _, err := s.storage.Open(r.Context(), storage)
 	if err != nil {
 		writeJSON(w, 404, apiError{Error: "model preview not found"})
 		return
 	}
 	defer file.Close()
-	info, err := file.Stat()
-	if err != nil {
-		writeJSON(w, 500, apiError{Error: "could not read model preview"})
-		return
-	}
 	w.Header().Set("Content-Type", imageMime(filepath.Ext(storage)))
 	w.Header().Set("Cache-Control", "private, max-age=3600")
-	http.ServeContent(w, r, filepath.Base(storage), info.ModTime(), file)
+	_, _ = io.Copy(w, file)
 }
 
 func (s *Server) uploadModelPreview(w http.ResponseWriter, r *http.Request) {
@@ -285,27 +306,36 @@ func (s *Server) uploadModelPreview(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 404, apiError{Error: "model not found"})
 		return
 	}
-	storage := id + "-preview" + ext
-	path := filepath.Join(s.cfg.UploadDir, "models", filepath.Base(storage))
-	out, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0640)
+	storage := modelObjectKey(id + "-preview" + ext)
+	temp, err := os.CreateTemp("", "printforge-preview-*"+ext)
 	if err != nil {
 		writeJSON(w, 500, apiError{Error: "could not store preview image"})
 		return
 	}
-	written, copyErr := io.Copy(out, io.LimitReader(file, s.cfg.MaxImageFileBytes+1))
-	closeErr := out.Close()
+	path := temp.Name()
+	defer os.Remove(path)
+	written, copyErr := io.Copy(temp, io.LimitReader(file, s.cfg.MaxImageFileBytes+1))
+	closeErr := temp.Close()
 	if copyErr != nil || closeErr != nil || written > s.cfg.MaxImageFileBytes {
-		_ = os.Remove(path)
 		badRequest(w, "preview image exceeds configured size limit")
 		return
 	}
+	stored, openErr := os.Open(path)
+	if openErr != nil || s.storage.Put(r.Context(), storage, stored, written, imageMime(ext)) != nil {
+		if stored != nil {
+			_ = stored.Close()
+		}
+		writeJSON(w, 500, apiError{Error: "could not store preview image"})
+		return
+	}
+	_ = stored.Close()
 	if _, err := s.db.Exec(r.Context(), `UPDATE models SET preview_path=$2 WHERE id=$1`, id, storage); err != nil {
-		_ = os.Remove(path)
+		_ = s.storage.Remove(r.Context(), storage)
 		writeJSON(w, 500, apiError{Error: "could not register preview image"})
 		return
 	}
 	if oldPreview != nil && *oldPreview != storage {
-		_ = os.Remove(filepath.Join(s.cfg.UploadDir, "models", filepath.Base(*oldPreview)))
+		_ = s.storage.Remove(r.Context(), *oldPreview)
 	}
 	writeJSON(w, 200, map[string]any{"previewUrl": "/api/models/" + id + "/preview"})
 }
@@ -382,6 +412,9 @@ func validModelSignature(ext string, b []byte) bool {
 		return false
 	}
 	switch ext {
+	case ".gcode", ".gco":
+		text := strings.ToUpper(string(b))
+		return strings.Contains(text, "G0") || strings.Contains(text, "G1") || strings.Contains(text, "M104") || strings.HasPrefix(strings.TrimSpace(text), ";")
 	case ".3mf":
 		return b[0] == 'P' && b[1] == 'K'
 	case ".obj":
@@ -401,9 +434,104 @@ func modelMime(ext string) string {
 		return "model/stl"
 	case ".obj":
 		return "model/obj"
+	case ".gcode", ".gco":
+		return "text/x.gcode"
 	default:
 		return "model/3mf"
 	}
+}
+
+var (
+	timeSecondsPattern = regexp.MustCompile(`(?im)^;\s*(?:TIME|total estimated time)\s*[:=]\s*([0-9]+(?:\.[0-9]+)?)\s*$`)
+	timeHumanPattern   = regexp.MustCompile(`(?im)^;\s*(?:estimated printing time[^=]*|model printing time)\s*=\s*(.+)$`)
+	gramsPattern       = regexp.MustCompile(`(?im)^;\s*(?:total filament used \[g\]|filament used \[g\]|filament weight|total filament weight)\s*=\s*([0-9]+(?:\.[0-9]+)?)`)
+	lengthPattern      = regexp.MustCompile(`(?im)^;\s*(?:filament used|total filament used)\s*=\s*([0-9]+(?:\.[0-9]+)?)\s*mm`)
+	printerPattern     = regexp.MustCompile(`(?im)^;\s*(?:printer_model|printer model)\s*=\s*(.+)$`)
+	materialPattern    = regexp.MustCompile(`(?im)^;\s*(?:filament_type|filament type)\s*=\s*(.+)$`)
+)
+
+func analyseSlicerEstimate(path, ext string) (*int, *float64, []byte) {
+	data, err := slicerText(path, ext)
+	if err != nil || len(data) == 0 {
+		return nil, nil, []byte(`{}`)
+	}
+	metadata := map[string]any{"source": strings.ToUpper(strings.TrimPrefix(ext, "."))}
+	var minutes *int
+	if match := timeSecondsPattern.FindSubmatch(data); len(match) > 1 {
+		if seconds, err := strconv.ParseFloat(string(match[1]), 64); err == nil {
+			value := int(math.Ceil(seconds / 60))
+			minutes = &value
+		}
+	} else if match := timeHumanPattern.FindSubmatch(data); len(match) > 1 {
+		if value := parseHumanDuration(string(match[1])); value > 0 {
+			minutes = &value
+		}
+	}
+	var grams *float64
+	if match := gramsPattern.FindSubmatch(data); len(match) > 1 {
+		if value, err := strconv.ParseFloat(string(match[1]), 64); err == nil {
+			grams = &value
+		}
+	} else if match := lengthPattern.FindSubmatch(data); len(match) > 1 {
+		if lengthMM, err := strconv.ParseFloat(string(match[1]), 64); err == nil {
+			value := lengthMM * math.Pi * math.Pow(1.75/2, 2) / 1000 * 1.24
+			grams = &value
+		}
+	}
+	if match := printerPattern.FindSubmatch(data); len(match) > 1 {
+		metadata["printer"] = strings.TrimSpace(string(match[1]))
+	}
+	if match := materialPattern.FindSubmatch(data); len(match) > 1 {
+		metadata["material"] = strings.TrimSpace(string(match[1]))
+	}
+	encoded, _ := json.Marshal(metadata)
+	return minutes, grams, encoded
+}
+
+func slicerText(path, ext string) ([]byte, error) {
+	if ext != ".3mf" {
+		return os.ReadFile(path)
+	}
+	archive, err := zip.OpenReader(path)
+	if err != nil {
+		return nil, err
+	}
+	defer archive.Close()
+	for _, part := range archive.File {
+		name := strings.ToLower(part.Name)
+		if strings.HasSuffix(name, ".gcode") || strings.HasSuffix(name, "slice_info.config") {
+			reader, err := part.Open()
+			if err != nil {
+				continue
+			}
+			data, readErr := io.ReadAll(io.LimitReader(reader, 16<<20))
+			_ = reader.Close()
+			if readErr == nil && len(data) > 0 {
+				return data, nil
+			}
+		}
+	}
+	return nil, errors.New("slicer metadata not found")
+}
+
+func parseHumanDuration(value string) int {
+	lower := strings.ToLower(value)
+	patterns := []struct {
+		re         *regexp.Regexp
+		multiplier int
+	}{
+		{regexp.MustCompile(`([0-9]+)\s*(?:d|day)`), 24 * 60},
+		{regexp.MustCompile(`([0-9]+)\s*(?:h|hour)`), 60},
+		{regexp.MustCompile(`([0-9]+)\s*(?:m|min)`), 1},
+	}
+	total := 0
+	for _, pattern := range patterns {
+		if match := pattern.re.FindStringSubmatch(lower); len(match) > 1 {
+			number, _ := strconv.Atoi(match[1])
+			total += number * pattern.multiplier
+		}
+	}
+	return total
 }
 
 type stlInfo struct {

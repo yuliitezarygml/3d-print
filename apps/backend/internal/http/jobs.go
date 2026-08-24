@@ -11,19 +11,20 @@ import (
 )
 
 type printJobInput struct {
-	OrderID                *string  `json:"orderId"`
-	ModelID                *string  `json:"modelId"`
-	PrinterID              string   `json:"printerId"`
-	SpoolID                string   `json:"spoolId"`
-	Quantity               int      `json:"quantity"`
-	EstimatedMinutes       int      `json:"estimatedMinutes"`
-	EstimatedFilamentGrams float64  `json:"estimatedFilamentGrams"`
-	LabourHours            float64  `json:"labourHours"`
-	PostProcessingCost     float64  `json:"postProcessingCost"`
-	PackagingCost          float64  `json:"packagingCost"`
-	OtherCost              float64  `json:"otherCost"`
-	MarkupPercent          *float64 `json:"markupPercent"`
-	Notes                  string   `json:"notes"`
+	OrderID                *string    `json:"orderId"`
+	ModelID                *string    `json:"modelId"`
+	PrinterID              string     `json:"printerId"`
+	SpoolID                string     `json:"spoolId"`
+	Quantity               int        `json:"quantity"`
+	EstimatedMinutes       int        `json:"estimatedMinutes"`
+	EstimatedFilamentGrams float64    `json:"estimatedFilamentGrams"`
+	LabourHours            float64    `json:"labourHours"`
+	PostProcessingCost     float64    `json:"postProcessingCost"`
+	PackagingCost          float64    `json:"packagingCost"`
+	OtherCost              float64    `json:"otherCost"`
+	MarkupPercent          *float64   `json:"markupPercent"`
+	Notes                  string     `json:"notes"`
+	ScheduledStart         *time.Time `json:"scheduledStart"`
 }
 
 type costCalculation struct {
@@ -86,8 +87,13 @@ func (s *Server) createPrintJob(w http.ResponseWriter, r *http.Request) {
 		markup = *in.MarkupPercent
 	}
 	cost := calculateCosts(in.EstimatedMinutes, in.EstimatedFilamentGrams, power, spoolPrice, spoolInitial, electricity, machine, purchase, depreciation, in.LabourHours, labourRate, in.PostProcessingCost, in.PackagingCost, in.OtherCost, markup)
+	var scheduledEnd *time.Time
+	if in.ScheduledStart != nil {
+		value := in.ScheduledStart.Add(time.Duration(in.EstimatedMinutes) * time.Minute)
+		scheduledEnd = &value
+	}
 	var id string
-	err = s.db.QueryRow(r.Context(), `INSERT INTO print_jobs(order_id,model_id,printer_id,spool_id,quantity,estimated_minutes,estimated_filament_grams,power_watts,electricity_price_per_kwh,estimated_energy_kwh,material_cost,electricity_cost,machine_cost,labour_cost,post_processing_cost,packaging_cost,other_cost,total_cost,markup_percent,suggested_price,notes)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)RETURNING id`, in.OrderID, in.ModelID, in.PrinterID, in.SpoolID, in.Quantity, in.EstimatedMinutes, in.EstimatedFilamentGrams, cost.PowerWatts, cost.ElectricityRate, cost.EnergyKwh, cost.MaterialCost, cost.ElectricityCost, cost.MachineCost, cost.LabourCost, cost.PostProcessingCost, cost.PackagingCost, cost.OtherCost, cost.TotalCost, cost.MarkupPercent, cost.SuggestedPrice, in.Notes).Scan(&id)
+	err = s.db.QueryRow(r.Context(), `INSERT INTO print_jobs(order_id,model_id,printer_id,spool_id,quantity,estimated_minutes,estimated_filament_grams,power_watts,electricity_price_per_kwh,estimated_energy_kwh,material_cost,electricity_cost,machine_cost,labour_cost,post_processing_cost,packaging_cost,other_cost,total_cost,markup_percent,suggested_price,notes,scheduled_start,scheduled_end)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)RETURNING id`, in.OrderID, in.ModelID, in.PrinterID, in.SpoolID, in.Quantity, in.EstimatedMinutes, in.EstimatedFilamentGrams, cost.PowerWatts, cost.ElectricityRate, cost.EnergyKwh, cost.MaterialCost, cost.ElectricityCost, cost.MachineCost, cost.LabourCost, cost.PostProcessingCost, cost.PackagingCost, cost.OtherCost, cost.TotalCost, cost.MarkupPercent, cost.SuggestedPrice, in.Notes, in.ScheduledStart, scheduledEnd).Scan(&id)
 	if err != nil {
 		badRequest(w, "could not create print job")
 		return
@@ -141,6 +147,11 @@ func (s *Server) updatePrintJobStatus(w http.ResponseWriter, r *http.Request) {
 			badRequest(w, err.Error())
 			return
 		}
+		var orderID *string
+		_ = s.db.QueryRow(r.Context(), `SELECT order_id FROM print_jobs WHERE id=$1`, id).Scan(&orderID)
+		if orderID != nil {
+			go s.telegram.notifyOrderStatus(*orderID)
+		}
 		writeJSON(w, 200, result)
 		return
 	}
@@ -160,6 +171,11 @@ func (s *Server) updatePrintJobStatus(w http.ResponseWriter, r *http.Request) {
 		_, _ = s.db.Exec(r.Context(), `UPDATE orders SET status='PRINTING',updated_at=now() WHERE id=(SELECT order_id FROM print_jobs WHERE id=$1) AND status NOT IN ('CANCELLED','COMPLETED')`, id)
 	}
 	s.audit(r, "STATUS_CHANGE", "PrintJob", id, nil, in)
+	var orderID *string
+	_ = s.db.QueryRow(r.Context(), `SELECT order_id FROM print_jobs WHERE id=$1`, id).Scan(&orderID)
+	if orderID != nil && in.Status == "PRINTING" {
+		go s.telegram.notifyOrderStatus(*orderID)
+	}
 	writeJSON(w, 200, map[string]any{"id": id, "status": in.Status})
 }
 

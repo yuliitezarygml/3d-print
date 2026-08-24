@@ -182,6 +182,7 @@ func (service *telegramService) handleMessage(ctx context.Context, token string,
 		_ = service.sendMessage(ctx, token, chatID, "Заказ с таким кодом не найден. Проверьте код и попробуйте ещё раз.")
 		return
 	}
+	_, _ = service.server.db.Exec(ctx, `INSERT INTO telegram_subscriptions(order_id,chat_id,last_notified_status) SELECT id,$2,status FROM orders WHERE upper(tracking_code)=upper($1) ON CONFLICT(order_id,chat_id) DO UPDATE SET updated_at=now()`, code, chatID)
 	message := trackingMessage(order)
 	if base := strings.TrimRight(order.PublicBaseURL, "/"); base != "" {
 		message += "\n\n<a href=\"" + html.EscapeString(base+"/track/"+order.TrackingCode) + "\">Открыть красивую страницу заказа</a>"
@@ -192,13 +193,81 @@ func (service *telegramService) handleMessage(ctx context.Context, token string,
 			break
 		}
 		if model.PreviewPath != nil {
-			previewPath := filepath.Join(service.server.cfg.UploadDir, "models", filepath.Base(*model.PreviewPath))
-			_ = service.sendFile(ctx, token, "sendPhoto", "photo", chatID, previewPath, "Модель: "+model.Name)
+			if previewPath, cleanup, err := service.materializeObject(ctx, *model.PreviewPath, filepath.Base(*model.PreviewPath)); err == nil {
+				_ = service.sendFile(ctx, token, "sendPhoto", "photo", chatID, previewPath, "Модель: "+model.Name)
+				cleanup()
+			}
 		}
 		var storage, filename string
 		if err := service.server.db.QueryRow(ctx, `SELECT storage_path,original_filename FROM models WHERE id=$1`, model.ID).Scan(&storage, &filename); err == nil {
-			modelPath := filepath.Join(service.server.cfg.UploadDir, "models", filepath.Base(storage))
-			_ = service.sendFile(ctx, token, "sendDocument", "document", chatID, modelPath, "Скачать "+filename)
+			if modelPath, cleanup, materializeErr := service.materializeObject(ctx, storage, filename); materializeErr == nil {
+				_ = service.sendFile(ctx, token, "sendDocument", "document", chatID, modelPath, "Скачать "+filename)
+				cleanup()
+			}
+		}
+	}
+}
+
+func (service *telegramService) materializeObject(ctx context.Context, key, filename string) (string, func(), error) {
+	if path, ok := service.server.storage.LocalPath(key); ok {
+		return path, func() {}, nil
+	}
+	source, _, _, err := service.server.storage.Open(ctx, key)
+	if err != nil {
+		return "", func() {}, err
+	}
+	defer source.Close()
+	ext := filepath.Ext(filename)
+	temp, err := os.CreateTemp("", "printforge-telegram-*"+ext)
+	if err != nil {
+		return "", func() {}, err
+	}
+	if _, err = io.Copy(temp, source); err != nil {
+		_ = temp.Close()
+		_ = os.Remove(temp.Name())
+		return "", func() {}, err
+	}
+	if err = temp.Close(); err != nil {
+		_ = os.Remove(temp.Name())
+		return "", func() {}, err
+	}
+	return temp.Name(), func() { _ = os.Remove(temp.Name()) }, nil
+}
+
+func (service *telegramService) notifyOrderStatus(orderID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	token, enabled, err := service.configuredToken(ctx)
+	if err != nil || !enabled || token == "" {
+		return
+	}
+	var code string
+	if service.server.db.QueryRow(ctx, `SELECT tracking_code FROM orders WHERE id=$1`, orderID).Scan(&code) != nil {
+		return
+	}
+	order, err := service.server.loadTrackedOrder(ctx, code)
+	if err != nil {
+		return
+	}
+	rows, err := service.server.db.Query(ctx, `SELECT chat_id FROM telegram_subscriptions WHERE order_id=$1 AND last_notified_status IS DISTINCT FROM $2::order_status`, orderID, order.Status)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	chatIDs := make([]int64, 0)
+	for rows.Next() {
+		var chatID int64
+		if rows.Scan(&chatID) == nil {
+			chatIDs = append(chatIDs, chatID)
+		}
+	}
+	for _, chatID := range chatIDs {
+		message := "🔔 <b>Статус заказа изменился</b>\n\n" + trackingMessage(order)
+		if base := strings.TrimRight(order.PublicBaseURL, "/"); base != "" {
+			message += "\n\n<a href=\"" + html.EscapeString(base+"/track/"+order.TrackingCode) + "\">Открыть заказ</a>"
+		}
+		if service.sendMessage(ctx, token, chatID, message) == nil {
+			_, _ = service.server.db.Exec(ctx, `UPDATE telegram_subscriptions SET last_notified_status=$2::order_status,updated_at=now() WHERE order_id=$1 AND chat_id=$3`, orderID, order.Status, chatID)
 		}
 	}
 }

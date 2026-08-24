@@ -74,7 +74,9 @@ MAX_IMAGE_FILE_SIZE_MB=10
 | `ALLOWED_ORIGINS` | Разрешённые browser origins | Локальные адреса или ваш HTTPS-домен |
 | `NEXT_PUBLIC_API_URL` | Адрес API для frontend | Пусто при общем домене через Nginx |
 | `HTTP_PORT` | Публичный порт Nginx | `80`; при конфликте можно `8088` |
-| `MAX_MODEL_FILE_SIZE_MB` | Лимит STL/OBJ/3MF | По умолчанию `200` |
+| `MAX_MODEL_FILE_SIZE_MB` | Лимит STL/OBJ/3MF/G-code | По умолчанию `200` |
+| `STORAGE_DRIVER` | `local` или `s3` | По умолчанию `local` |
+| `S3_ENDPOINT`, `S3_BUCKET` | S3/R2 endpoint и bucket | Нужны для `s3` |
 | `MAX_IMAGE_FILE_SIZE_MB` | Лимит изображения | По умолчанию `10` |
 
 `.env` исключён из Git. Не добавляйте токен Telegram, пароль или JWT secret в README, issue, скриншоты либо коммиты.
@@ -190,10 +192,10 @@ docker compose up -d
 ```bash
 ./scripts/backup.sh
 ls -lh backups/
-./scripts/restore.sh backups/printforge_YYYYMMDD_HHMMSS.dump
+./scripts/restore.sh backups/printforge_YYYYMMDD_HHMMSS.tar.gz
 ```
 
-Restore выполняется с `--clean --if-exists` и заменяет совпадающие объекты. Перед ним сделайте новый backup. Загруженные STL/3MF находятся в отдельном volume `uploads`; копируйте его отдельно при переносе между серверами.
+Restore выполняется с `--clean --if-exists` и заменяет совпадающие объекты. Архив backup уже содержит PostgreSQL и локальный volume с моделями/фотографиями. Перед восстановлением сделайте новый backup.
 
 ## 9. Обновление
 

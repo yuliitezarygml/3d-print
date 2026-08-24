@@ -81,6 +81,10 @@ jobs:
           docker compose logs --tail=200
           exit 1
       - run: node tests/e2e/smoke.mjs
+      - name: Install Playwright browser
+        run: npm --prefix apps/frontend exec playwright install --with-deps chromium
+      - name: Browser user journeys
+        run: npm --prefix apps/frontend run test:e2e
       - name: Service logs
         if: always()
         run: docker compose logs --tail=200

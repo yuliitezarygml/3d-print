@@ -19,6 +19,13 @@ type Config struct {
 	UploadDir         string
 	MaxModelFileBytes int64
 	MaxImageFileBytes int64
+	StorageDriver     string
+	S3Endpoint        string
+	S3Region          string
+	S3Bucket          string
+	S3AccessKey       string
+	S3SecretKey       string
+	S3UseSSL          bool
 }
 
 func Load() (Config, error) {
@@ -31,6 +38,13 @@ func Load() (Config, error) {
 		RefreshTokenTTL:  durationEnv("REFRESH_TOKEN_TTL", 7*24*time.Hour),
 		AllowedOrigins:   strings.Split(env("ALLOWED_ORIGINS", "http://localhost:3000"), ","),
 		UploadDir:        env("UPLOAD_DIR", "/data/uploads"),
+		StorageDriver:    strings.ToLower(env("STORAGE_DRIVER", "local")),
+		S3Endpoint:       strings.TrimSpace(os.Getenv("S3_ENDPOINT")),
+		S3Region:         env("S3_REGION", "auto"),
+		S3Bucket:         strings.TrimSpace(os.Getenv("S3_BUCKET")),
+		S3AccessKey:      strings.TrimSpace(os.Getenv("S3_ACCESS_KEY_ID")),
+		S3SecretKey:      strings.TrimSpace(os.Getenv("S3_SECRET_ACCESS_KEY")),
+		S3UseSSL:         strings.EqualFold(env("S3_USE_SSL", "true"), "true"),
 	}
 	cfg.MaxModelFileBytes = mbEnv("MAX_MODEL_FILE_SIZE_MB", 200)
 	cfg.MaxImageFileBytes = mbEnv("MAX_IMAGE_FILE_SIZE_MB", 10)
@@ -39,6 +53,12 @@ func Load() (Config, error) {
 	}
 	if len(cfg.JWTSecret) < 32 {
 		return Config{}, errors.New("JWT_SECRET must be at least 32 characters")
+	}
+	if cfg.StorageDriver != "local" && cfg.StorageDriver != "s3" {
+		return Config{}, errors.New("STORAGE_DRIVER must be local or s3")
+	}
+	if cfg.StorageDriver == "s3" && (cfg.S3Endpoint == "" || cfg.S3Bucket == "" || cfg.S3AccessKey == "" || cfg.S3SecretKey == "") {
+		return Config{}, errors.New("S3 endpoint, bucket and credentials are required when STORAGE_DRIVER=s3")
 	}
 	return cfg, nil
 }

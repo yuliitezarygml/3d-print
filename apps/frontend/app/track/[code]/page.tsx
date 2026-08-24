@@ -2,11 +2,13 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Box, CalendarClock, Check, Download, FileDown, PackageCheck, Wallet } from "lucide-react";
+import { Box, CalendarClock, Check, Download, FileDown, Images, PackageCheck, Wallet } from "lucide-react";
 import { API_URL, money } from "@/lib/api";
 
 type TrackedModel={id:string;name:string;originalFilename:string;format:string;fileSizeBytes:number;previewUrl?:string;downloadUrl:string};
-type TrackedOrder={number:string;trackingCode:string;status:string;statusLabel:string;sellingPrice:number;paidAmount:number;balanceDue:number;currency:string;customerName?:string;deadline?:string;createdAt:string;notes:string;progress:number;models:TrackedModel[]};
+type TrackedEvent={id:string;eventType:string;title:string;message:string;createdAt:string};
+type TrackedPhoto={id:string;caption:string;url:string;createdAt:string};
+type TrackedOrder={number:string;trackingCode:string;status:string;statusLabel:string;sellingPrice:number;paidAmount:number;balanceDue:number;currency:string;customerName?:string;deadline?:string;createdAt:string;notes:string;progress:number;models:TrackedModel[];events:TrackedEvent[];photos:TrackedPhoto[]};
 
 const timeline=[{key:"NEW",label:"Принят"},{key:"CONFIRMED",label:"Подтверждён"},{key:"READY_TO_PRINT",label:"Подготовлен"},{key:"PRINTING",label:"Печатается"},{key:"POST_PROCESSING",label:"Обработка"},{key:"READY",label:"Готов"},{key:"COMPLETED",label:"Получен"}];
 
@@ -24,6 +26,8 @@ export default function TrackOrderPage(){
     <div className="tracking-grid"><section className="tracking-card"><div className="tracking-card-title"><PackageCheck/><div><p className="eyebrow">ВАШИ МОДЕЛИ</p><h2>Файлы заказа</h2></div></div><div className="public-model-grid">{data.models.length?data.models.map(model=><article key={model.id}><div className="public-model-cover" style={model.previewUrl?{backgroundImage:`url("${API_URL}${model.previewUrl}")`}:undefined}>{!model.previewUrl&&<Box size={34}/>}</div><div><strong>{model.name}</strong><small>{model.format} · {(model.fileSizeBytes/1024/1024).toFixed(2)} МБ</small><a className="button" href={`${API_URL}${model.downloadUrl}`} download={model.originalFilename}><Download size={14}/>Скачать модель</a></div></article>):<p className="muted">Файлы появятся после прикрепления моделью мастерской.</p>}</div></section>
       <aside className="tracking-card tracking-finance"><div className="tracking-card-title"><Wallet/><div><p className="eyebrow">СТОИМОСТЬ</p><h2>Оплата заказа</h2></div></div><div className="finance-total"><span>Полная стоимость</span><strong>{money(data.sellingPrice,data.currency)}</strong></div><div className="finance-line"><span>Оплачено</span><strong>{money(data.paidAmount,data.currency)}</strong></div><div className="finance-line due"><span>Осталось оплатить</span><strong>{money(data.balanceDue,data.currency)}</strong></div><a className="button primary receipt-download" href={`${API_URL}/api/public/track/${encodeURIComponent(data.trackingCode)}/receipt.pdf`} download={`receipt-${data.number}.pdf`}><FileDown size={15}/>Скачать PDF-квитанцию</a>{data.deadline&&<div className="tracking-deadline"><CalendarClock size={17}/><span>Плановый срок<strong>{new Date(data.deadline).toLocaleString("ru-MD",{dateStyle:"medium",timeStyle:"short"})}</strong></span></div>}</aside>
     </div>
+    <div className="tracking-grid tracking-progress-grid"><section className="tracking-card"><div className="tracking-card-title"><CalendarClock/><div><p className="eyebrow">ИСТОРИЯ</p><h2>Что происходит с заказом</h2></div></div><div className="public-history">{(data.events||[]).slice().reverse().map(event=><article key={event.id}><i/><div><strong>{event.title}</strong>{event.message&&<p>{event.message}</p>}<small>{new Date(event.createdAt).toLocaleString("ru-MD",{dateStyle:"medium",timeStyle:"short"})}</small></div></article>)}</div></section>
+      <section className="tracking-card"><div className="tracking-card-title"><Images/><div><p className="eyebrow">ИЗ МАСТЕРСКОЙ</p><h2>Фотографии процесса</h2></div></div>{data.photos?.length?<div className="public-photo-grid">{data.photos.map(photo=><figure key={photo.id}><a href={`${API_URL}${photo.url}`} target="_blank" rel="noreferrer"><span style={{backgroundImage:`url("${API_URL}${photo.url}")`}}/></a>{photo.caption&&<figcaption>{photo.caption}</figcaption>}</figure>)}</div>:<p className="muted">Фотографии появятся, когда мастер начнёт работу.</p>}</section></div>
     <footer className="tracking-footer">Данные обновляются автоматически · код можно отправить Telegram‑боту мастерской</footer>
   </div></main>;
 }

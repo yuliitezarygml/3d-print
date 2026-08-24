@@ -5,7 +5,7 @@ import "net/http"
 func (s *Server) openapi(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"openapi": "3.0.3",
-		"info":    map[string]any{"title": "PrintForge API", "version": "1.0.0", "description": "3D-print workshop management API"},
+		"info":    map[string]any{"title": "PrintForge API", "version": "0.1.0", "description": "3D-print workshop management API"},
 		"servers": []map[string]string{{"url": "/"}},
 		"paths": map[string]any{
 			"/api/auth/login":                      map[string]any{"post": map[string]any{"summary": "Sign in"}},
@@ -15,9 +15,13 @@ func (s *Server) openapi(w http.ResponseWriter, r *http.Request) {
 			"/api/spools":                          map[string]any{"get": map[string]any{"summary": "List filament spools"}, "post": map[string]any{"summary": "Create spool"}},
 			"/api/orders":                          map[string]any{"get": map[string]any{"summary": "List orders"}, "post": map[string]any{"summary": "Create order"}},
 			"/api/orders/{id}/receipt.pdf":         map[string]any{"get": map[string]any{"summary": "Download authenticated order receipt PDF"}},
-			"/api/models/upload":                   map[string]any{"post": map[string]any{"summary": "Upload STL, OBJ or 3MF model"}},
+			"/api/models/upload":                   map[string]any{"post": map[string]any{"summary": "Upload STL, OBJ, 3MF or G-code model"}},
+			"/api/public/requests":                 map[string]any{"post": map[string]any{"summary": "Create public print request and tracking code"}},
 			"/api/public/track/{code}":             map[string]any{"get": map[string]any{"summary": "Public order tracking by secure code"}},
 			"/api/public/track/{code}/receipt.pdf": map[string]any{"get": map[string]any{"summary": "Download public order receipt PDF by secure code"}},
+			"/api/orders/{id}/events":              map[string]any{"get": map[string]any{"summary": "List order history"}, "post": map[string]any{"summary": "Publish order event"}},
+			"/api/orders/{id}/photos":              map[string]any{"post": map[string]any{"summary": "Upload order progress photo"}},
+			"/api/calendar":                        map[string]any{"get": map[string]any{"summary": "Production schedule"}},
 			"/api/settings/telegram":               map[string]any{"put": map[string]any{"summary": "Configure encrypted Telegram bot token"}},
 			"/api/print-jobs":                      map[string]any{"get": map[string]any{"summary": "List print jobs"}, "post": map[string]any{"summary": "Create job with cost calculation"}},
 		},

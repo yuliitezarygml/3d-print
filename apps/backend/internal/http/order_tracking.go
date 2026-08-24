@@ -47,6 +47,7 @@ type trackedModel struct {
 }
 
 type trackedOrder struct {
+	ID            string         `json:"-"`
 	Number        string         `json:"number"`
 	TrackingCode  string         `json:"trackingCode"`
 	Status        string         `json:"status"`
@@ -61,13 +62,15 @@ type trackedOrder struct {
 	Notes         string         `json:"notes"`
 	Progress      int            `json:"progress"`
 	Models        []trackedModel `json:"models"`
+	Events        []orderEvent   `json:"events"`
+	Photos        []orderPhoto   `json:"photos"`
 	CompanyName   string         `json:"-"`
 	PublicBaseURL string         `json:"-"`
 }
 
 func (s *Server) loadTrackedOrder(ctx context.Context, code string) (trackedOrder, error) {
 	var order trackedOrder
-	err := s.db.QueryRow(ctx, `SELECT o.number,o.tracking_code,o.status,o.selling_price,o.paid_amount,o.selling_price-o.paid_amount,s.currency,c.name,o.deadline,o.created_at,COALESCE(o.notes,''),s.company_name,s.public_base_url FROM orders o LEFT JOIN customers c ON c.id=o.customer_id CROSS JOIN settings s WHERE upper(o.tracking_code)=upper($1)`, strings.TrimSpace(code)).Scan(&order.Number, &order.TrackingCode, &order.Status, &order.SellingPrice, &order.PaidAmount, &order.BalanceDue, &order.Currency, &order.CustomerName, &order.Deadline, &order.CreatedAt, &order.Notes, &order.CompanyName, &order.PublicBaseURL)
+	err := s.db.QueryRow(ctx, `SELECT o.id,o.number,o.tracking_code,o.status,o.selling_price,o.paid_amount,o.selling_price-o.paid_amount,s.currency,c.name,o.deadline,o.created_at,COALESCE(o.notes,''),s.company_name,s.public_base_url FROM orders o LEFT JOIN customers c ON c.id=o.customer_id CROSS JOIN settings s WHERE upper(o.tracking_code)=upper($1)`, strings.TrimSpace(code)).Scan(&order.ID, &order.Number, &order.TrackingCode, &order.Status, &order.SellingPrice, &order.PaidAmount, &order.BalanceDue, &order.Currency, &order.CustomerName, &order.Deadline, &order.CreatedAt, &order.Notes, &order.CompanyName, &order.PublicBaseURL)
 	if err != nil {
 		return trackedOrder{}, errors.New("order not found")
 	}
@@ -92,7 +95,38 @@ func (s *Server) loadTrackedOrder(ctx context.Context, code string) (trackedOrde
 		}
 		order.Models = append(order.Models, model)
 	}
-	return order, rows.Err()
+	if err := rows.Err(); err != nil {
+		return trackedOrder{}, err
+	}
+	eventRows, err := s.db.Query(ctx, `SELECT id,event_type,status::text,title,message,is_public,metadata,created_at FROM order_events WHERE order_id=$1 AND is_public ORDER BY created_at,id`, order.ID)
+	if err != nil {
+		return trackedOrder{}, err
+	}
+	defer eventRows.Close()
+	order.Events = make([]orderEvent, 0)
+	for eventRows.Next() {
+		var event orderEvent
+		var raw []byte
+		if eventRows.Scan(&event.ID, &event.EventType, &event.Status, &event.Title, &event.Message, &event.IsPublic, &raw, &event.CreatedAt) == nil {
+			event.Metadata = map[string]any{}
+			_ = json.Unmarshal(raw, &event.Metadata)
+			order.Events = append(order.Events, event)
+		}
+	}
+	photoRows, err := s.db.Query(ctx, `SELECT id,caption,original_filename,is_public,created_at FROM order_photos WHERE order_id=$1 AND is_public ORDER BY created_at`, order.ID)
+	if err != nil {
+		return trackedOrder{}, err
+	}
+	defer photoRows.Close()
+	order.Photos = make([]orderPhoto, 0)
+	for photoRows.Next() {
+		var photo orderPhoto
+		if photoRows.Scan(&photo.ID, &photo.Caption, &photo.OriginalFilename, &photo.IsPublic, &photo.CreatedAt) == nil {
+			photo.URL = "/api/public/track/" + order.TrackingCode + "/photos/" + photo.ID
+			order.Photos = append(order.Photos, photo)
+		}
+	}
+	return order, photoRows.Err()
 }
 
 func orderProgress(status string) int {
@@ -160,6 +194,7 @@ func (s *Server) updateOrderStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "STATUS_CHANGE", "Order", id, nil, input)
+	go s.telegram.notifyOrderStatus(id)
 	writeJSON(w, 200, map[string]any{"id": id, "status": input.Status, "statusLabel": orderStatusLabels[input.Status]})
 }
 

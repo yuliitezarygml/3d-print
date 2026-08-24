@@ -18,6 +18,7 @@ type Server struct {
 	auth     *authService
 	catalog  printerCatalog
 	telegram *telegramService
+	storage  objectStorage
 }
 
 type contextKey string
@@ -35,7 +36,11 @@ func New(cfg config.Config, db *pgxpool.Pool) *Server {
 	if err != nil {
 		panic(err)
 	}
-	server := &Server{cfg: cfg, db: db, auth: newAuthService(cfg, db), catalog: catalog}
+	store, err := newObjectStorage(cfg)
+	if err != nil {
+		panic(err)
+	}
+	server := &Server{cfg: cfg, db: db, auth: newAuthService(cfg, db), catalog: catalog, storage: store}
 	server.telegram = newTelegramService(server)
 	return server
 }
@@ -56,6 +61,8 @@ func (s *Server) Routes() http.Handler {
 	r.Get("/api/public/track/{code}/receipt.pdf", s.publicOrderReceipt)
 	r.Get("/api/public/track/{code}/models/{id}/file", s.publicTrackedModelFile)
 	r.Get("/api/public/track/{code}/models/{id}/preview", s.publicTrackedModelPreview)
+	r.Get("/api/public/track/{code}/photos/{photoId}", s.publicOrderPhotoFile)
+	r.Post("/api/public/requests", s.publicRequest)
 
 	r.Route("/api", func(api chi.Router) {
 		api.Use(s.requireAuth)
@@ -76,6 +83,10 @@ func (s *Server) Routes() http.Handler {
 		api.Post("/orders", s.createOrder)
 		api.Get("/orders/{id}/receipt.pdf", s.orderReceipt)
 		api.Patch("/orders/{id}/status", s.updateOrderStatus)
+		api.Get("/orders/{id}/events", s.listOrderEvents)
+		api.Post("/orders/{id}/events", s.createOrderEvent)
+		api.Post("/orders/{id}/photos", s.uploadOrderPhoto)
+		api.Get("/orders/{id}/photos/{photoId}", s.orderPhotoFile)
 		api.Get("/models", s.listModels)
 		api.Post("/models/upload", s.uploadModel)
 		api.Get("/models/{id}/file", s.modelFile)
@@ -84,6 +95,7 @@ func (s *Server) Routes() http.Handler {
 		api.Get("/print-jobs", s.listPrintJobs)
 		api.Post("/print-jobs", s.createPrintJob)
 		api.Patch("/print-jobs/{id}/status", s.updatePrintJobStatus)
+		api.Get("/calendar", s.productionCalendar)
 		api.Get("/settings", s.getSettings)
 		api.Put("/settings", s.updateSettings)
 		api.Put("/settings/telegram", s.updateTelegramSettings)

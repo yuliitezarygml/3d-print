@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>Open-source Workshop OS для мастерской и фермы 3D-печати</strong><br>
-  Заказы, клиенты, STL/3MF, очередь печати, склад пластика, электричество, себестоимость, PDF-квитанции и Telegram — в одном приложении.
+  Заказы, клиенты, STL/3MF/G-code, календарь, склад, электричество, PDF, фото этапов и Telegram — в одном приложении.
 </p>
 
 <p align="center">
@@ -25,7 +25,7 @@ PrintForge — self-hosted система управления 3D-печатью
 | Раздел | Что умеет |
 |---|---|
 | Заказы | Клиент, модели, сроки, статус, цена, внесённая оплата, уникальный код отслеживания |
-| Модели | Персональная библиотека клиента, STL/OBJ/3MF, превью, скачивание исходного файла |
+| Модели | Персональная библиотека, STL/OBJ/3MF/G-code, анализ слайсера, превью и скачивание |
 | Производство | Очередь печати, принтер, катушка, время, граммы, фактическое завершение задания |
 | Себестоимость | Пластик, электричество, станок, амортизация, оператор, постобработка, упаковка, прочие расходы и наценка |
 | Принтеры | Парк оборудования и каталог из 387 профилей OrcaSlicer/Bambu Studio с фотографиями |
@@ -33,6 +33,11 @@ PrintForge — self-hosted система управления 3D-печатью
 | Клиент | Публичная страница по коду: статус, готовность, цена, оплата, фото и скачивание модели |
 | PDF | Красиво оформленная квитанция с QR-кодом, составом заказа и остатком оплаты |
 | Telegram | Подключение бота через сайт; клиент вводит код заказа и получает актуальную информацию |
+| Онлайн-заявка | Клиент загружает модель без регистрации и сразу получает персональный код |
+| История | Статусы, заметки и фотографии процесса на публичной странице заказа |
+| Планирование | Производственный календарь с началом и окончанием печати |
+| Хранилище | Локальный volume или приватное S3/R2 |
+| PWA | Установка на компьютер/телефон и офлайн-экран |
 | Аналитика | Оборот, себестоимость, прибыль, затраты на электроэнергию и состояние принтеров |
 
 ## Интерфейс
@@ -53,6 +58,8 @@ PrintForge — self-hosted система управления 3D-печатью
 </details>
 
 Больше экранов и подробный рабочий процесс: **[руководство пользователя](docs/USER_GUIDE_RU.md)**.
+
+![Публичная заявка на 3D-печать](docs/images/public-request.png)
 
 ## Быстрый запуск
 
@@ -124,7 +131,7 @@ docker compose logs --tail=100
 1. В «Настройки» укажите название мастерской, валюту, тариф за кВт·ч и публичный URL.
 2. В «Принтеры» добавьте оборудование из встроенного справочника и укажите мощность/цену.
 3. В «Склад» создайте катушки с фактическим остатком и закупочной ценой.
-4. Создайте клиента и загрузите принадлежащие ему STL, OBJ или 3MF.
+4. Создайте клиента и загрузите STL, OBJ, 3MF или G-code — либо дайте клиенту форму `/request`.
 5. Создайте заказ — PrintForge автоматически выдаст уникальный код отслеживания.
 6. В «Очередь печати» рассчитайте задание и добавьте его в производство.
 7. Передайте клиенту ссылку `/track/CODE`, PDF-квитанцию или этот же код для Telegram-бота.
@@ -152,7 +159,7 @@ electricity_cost = energy_kwh × tariff_per_kwh
 1. Создайте бота через [@BotFather](https://t.me/BotFather) и скопируйте токен.
 2. Откройте «Настройки → Telegram-бот».
 3. Вставьте токен, укажите публичный URL и включите бота.
-4. Напишите боту код заказа.
+4. Напишите боту код заказа. Чат подпишется на заказ и будет получать новые статусы.
 
 Локально используется long polling, поэтому webhook и домен не требуются. Токен проверяется через Telegram API и хранится в PostgreSQL в зашифрованном AES-GCM виде. На публичном сервере укажите реальный HTTPS-адрес.
 
@@ -175,7 +182,7 @@ flowchart LR
     N --> F[Next.js 16 / React 19]
     N --> B[Go 1.25 API / chi]
     B --> P[(PostgreSQL 16)]
-    B --> V[(Uploads volume)]
+    B --> V[(Uploads volume / S3 / R2)]
     B --> T[Telegram Bot API]
 ```
 
@@ -185,6 +192,7 @@ apps/frontend/         Next.js интерфейс и 3D-превью
 config/nginx/          reverse proxy, единая точка входа :80
 scripts/               миграции, backup, restore, импорт каталога
 tests/e2e/             полный пользовательский smoke-сценарий
+apps/frontend/tests/   Playwright desktop/mobile сценарии
 docs/                  инструкции и реальные скриншоты
 docker-compose.yml     production-like локальный запуск
 docker-compose.dev.yml порты и hot development overlay
@@ -221,6 +229,7 @@ npm run dev
 (cd apps/frontend && npm run lint && npm run build)
 docker compose config
 node tests/e2e/smoke.mjs
+(cd apps/frontend && npx playwright install chromium && npm run test:e2e)
 ```
 
 Полный E2E-сценарий проходит путь: вход → клиент → модель → заказ → расчёт → завершение → публичное отслеживание → PDF. GitHub Actions запускает автоматические проверки при каждом push и pull request.
@@ -229,7 +238,7 @@ node tests/e2e/smoke.mjs
 
 ```bash
 ./scripts/backup.sh
-./scripts/restore.sh backups/printforge_YYYYMMDD_HHMMSS.dump
+./scripts/restore.sh backups/printforge_YYYYMMDD_HHMMSS.tar.gz
 ```
 
 Восстановление заменяет совпадающие объекты базы. Всегда создавайте свежий backup перед restore или обновлением.
@@ -258,6 +267,8 @@ node scripts/sync-printer-catalog.mjs \
 - `GET|POST /api/models`, `POST /api/models/upload`;
 - `GET /api/orders/:id/receipt.pdf`;
 - `GET /api/public/track/:code`, `GET /api/public/track/:code/receipt.pdf`;
+- `POST /api/public/requests`, `GET|POST /api/orders/:id/events`;
+- `POST /api/orders/:id/photos`, `GET /api/calendar`;
 - `GET|PUT /api/settings`, `PUT /api/settings/telegram`;
 - `GET /api/dashboard`.
 
@@ -266,6 +277,8 @@ node scripts/sync-printer-catalog.mjs \
 ## Документация
 
 - [Подробная установка и настройка](docs/SETUP_RU.md)
+- [Публикация на VPS с HTTPS и настройка R2/S3](docs/DEPLOY_VPS_RU.md)
+- [Что вошло в v0.1.0](docs/RELEASE_0.1.0_RU.md)
 - [Пошаговое руководство пользователя](docs/USER_GUIDE_RU.md)
 - [Настройка видимости и рекомендаций GitHub](docs/GITHUB_VISIBILITY_RU.md)
 - [Как внести вклад](CONTRIBUTING.md)
