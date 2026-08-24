@@ -1,5 +1,7 @@
 # Changelog
 
+[Русский](CHANGELOG.md) · [English](CHANGELOG_EN.md)
+
 ## [0.1.0] — 2026-08-24
 
 ### Добавлено

@@ -1,5 +1,7 @@
 # Сторонние компоненты и данные
 
+[Русский](THIRD_PARTY_NOTICES.md) · [English](THIRD_PARTY_NOTICES_EN.md)
+
 PrintForge использует сторонние библиотеки, шрифты, профили и изображения. Полные списки программных зависимостей находятся в `apps/backend/go.mod` и `apps/frontend/package-lock.json`.
 
 ## OrcaSlicer

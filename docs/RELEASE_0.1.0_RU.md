@@ -1,5 +1,7 @@
 # PrintForge v0.1.0
 
+[Русский](RELEASE_0.1.0_RU.md) · [English](RELEASE_0.1.0_EN.md)
+
 Первый полноценный релиз Workshop OS для небольшой мастерской и фермы 3D-печати.
 
 ## Главное
@@ -22,7 +24,8 @@
 ```bash
 ./scripts/backup.sh
 git pull --ff-only
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 node tests/e2e/smoke.mjs
 ```
 

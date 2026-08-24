@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Вопросы по установке
+  - name: Вопросы по установке / Setup questions
     url: https://github.com/yuliitezarygml/3d-print/blob/main/SUPPORT.md
-    about: Сначала проверьте руководство и список диагностических команд.
-  - name: Сообщить об уязвимости
+    about: Сначала проверьте руководство. / Check the setup guide and diagnostics first.
+  - name: Сообщить об уязвимости / Report a vulnerability
     url: https://github.com/yuliitezarygml/3d-print/security/advisories/new
-    about: Не публикуйте уязвимости и секреты в обычном issue.
+    about: Не публикуйте уязвимости в issue. / Do not disclose vulnerabilities in a public issue.

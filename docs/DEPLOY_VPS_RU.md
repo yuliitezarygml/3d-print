@@ -1,5 +1,7 @@
 # Публикация PrintForge на VPS с HTTPS
 
+[Русский](DEPLOY_VPS_RU.md) · [English](DEPLOY_VPS_EN.md)
+
 Схема запускает Go API, Next.js, PostgreSQL и Nginx в Docker. Caddy принимает запросы на портах 80/443, автоматически получает TLS-сертификат и передаёт трафик во внутренний Nginx.
 
 ## Что понадобится

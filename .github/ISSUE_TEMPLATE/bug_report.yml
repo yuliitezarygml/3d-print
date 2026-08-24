@@ -1,56 +1,56 @@
-name: Ошибка
-description: Сообщить о воспроизводимой проблеме PrintForge
+name: Ошибка / Bug report
+description: Сообщить о воспроизводимой проблеме / Report a reproducible problem
 title: "[Bug]: "
 labels: ["bug", "needs-triage"]
 body:
   - type: markdown
     attributes:
-      value: Спасибо! Не вставляйте токены, пароли, данные клиентов и приватные модели.
+      value: Спасибо! Не вставляйте токены, пароли, данные клиентов и приватные модели. / Thank you! Do not include tokens, passwords, customer data, or private models.
   - type: textarea
     id: summary
     attributes:
-      label: Что произошло?
-      description: Кратко опишите проблему.
+      label: Что произошло? / What happened?
+      description: Кратко опишите проблему. / Briefly describe the problem.
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Шаги воспроизведения
-      placeholder: "1. Открыть…\n2. Нажать…\n3. Увидеть…"
+      label: Шаги воспроизведения / Reproduction steps
+      placeholder: "1. Открыть / Open…\n2. Нажать / Click…\n3. Увидеть / Observe…"
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Ожидаемый результат
+      label: Ожидаемый результат / Expected result
     validations:
       required: true
   - type: input
     id: commit
     attributes:
-      label: Версия или commit
+      label: Версия или commit / Version or commit
       placeholder: git rev-parse --short HEAD
     validations:
       required: true
   - type: input
     id: environment
     attributes:
-      label: ОС, браузер и Docker
+      label: ОС, браузер и Docker / OS, browser, and Docker
       placeholder: macOS, Chrome, Docker Desktop
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: Безопасные логи или скриншоты
+      label: Безопасные логи или скриншоты / Sanitized logs or screenshots
       render: shell
   - type: checkboxes
     id: checks
     attributes:
-      label: Проверка
+      label: Проверка / Checks
       options:
-        - label: Я проверил существующие issues.
+        - label: Я проверил существующие issues. / I searched existing issues.
           required: true
-        - label: Я удалил секреты и персональные данные.
+        - label: Я удалил секреты и персональные данные. / I removed secrets and personal data.
           required: true

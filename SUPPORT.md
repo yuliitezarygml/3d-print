@@ -1,5 +1,7 @@
 # Поддержка
 
+[Русский](SUPPORT.md) · [English](SUPPORT_EN.md)
+
 ## Вопрос по установке
 
 Сначала выполните диагностику из [docs/SETUP_RU.md](docs/SETUP_RU.md) и поиск по существующим issues. Если ответ не найден, создайте issue из шаблона bug report.

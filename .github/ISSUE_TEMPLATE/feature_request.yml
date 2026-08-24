@@ -1,44 +1,44 @@
-name: Новая функция
-description: Предложить улучшение для мастерской 3D-печати
+name: Новая функция / Feature request
+description: Предложить улучшение / Suggest an improvement for a 3D-printing workshop
 title: "[Feature]: "
 labels: ["enhancement", "needs-triage"]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: Какую проблему решаем?
-      description: Опишите реальный сценарий мастерской.
+      label: Какую проблему решаем? / What problem are we solving?
+      description: Опишите реальный сценарий мастерской. / Describe a real workshop scenario.
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Желаемый результат
+      label: Желаемый результат / Desired outcome
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: Альтернативы
+      label: Альтернативы / Alternatives
   - type: dropdown
     id: area
     attributes:
-      label: Раздел
+      label: Раздел / Area
       options:
-        - Заказы и клиенты
-        - Очередь и себестоимость
-        - Модели и файлы
-        - Склад
-        - Принтеры
+        - Заказы и клиенты / Orders and customers
+        - Очередь и себестоимость / Queue and costing
+        - Модели и файлы / Models and files
+        - Склад / Inventory
+        - Принтеры / Printers
         - Telegram
-        - PDF и документы
-        - Развёртывание
-        - Другое
+        - PDF и документы / PDF and documents
+        - Развёртывание / Deployment
+        - Другое / Other
     validations:
       required: true
   - type: checkboxes
     id: contribute
     attributes:
-      label: Участие
+      label: Участие / Contribution
       options:
-        - label: Я готов помочь с реализацией или тестированием.
+        - label: Я готов помочь с реализацией или тестированием. / I can help implement or test this.

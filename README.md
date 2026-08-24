@@ -1,5 +1,7 @@
 # PrintForge
 
+<p align="center"><strong>Русский</strong> · <a href="README_EN.md">English</a></p>
+
 <p align="center">
   <strong>Open-source Workshop OS для мастерской и фермы 3D-печати</strong><br>
   Заказы, клиенты, STL/3MF/G-code, календарь, склад, электричество, PDF, фото этапов и Telegram — в одном приложении.
@@ -286,14 +288,15 @@ node scripts/sync-printer-catalog.mjs \
 
 ## Документация
 
-- [Подробная установка и настройка](docs/SETUP_RU.md)
-- [Публикация на VPS с HTTPS и настройка R2/S3](docs/DEPLOY_VPS_RU.md)
-- [Что вошло в v0.1.0](docs/RELEASE_0.1.0_RU.md)
-- [Пошаговое руководство пользователя](docs/USER_GUIDE_RU.md)
-- [Настройка видимости и рекомендаций GitHub](docs/GITHUB_VISIBILITY_RU.md)
-- [Как внести вклад](CONTRIBUTING.md)
-- [Политика безопасности](SECURITY.md)
-- [Сторонние компоненты](THIRD_PARTY_NOTICES.md)
+- [Все документы: Русский / English](docs/README.md)
+- [Подробная установка и настройка](docs/SETUP_RU.md) · [English](docs/SETUP_EN.md)
+- [Публикация на VPS с HTTPS и настройка R2/S3](docs/DEPLOY_VPS_RU.md) · [English](docs/DEPLOY_VPS_EN.md)
+- [Что вошло в v0.1.0](docs/RELEASE_0.1.0_RU.md) · [English](docs/RELEASE_0.1.0_EN.md)
+- [Пошаговое руководство пользователя](docs/USER_GUIDE_RU.md) · [English](docs/USER_GUIDE_EN.md)
+- [Настройка видимости и рекомендаций GitHub](docs/GITHUB_VISIBILITY_RU.md) · [English](docs/GITHUB_VISIBILITY_EN.md)
+- [Как внести вклад](CONTRIBUTING.md) · [English](CONTRIBUTING_EN.md)
+- [Политика безопасности](SECURITY.md) · [English](SECURITY_EN.md)
+- [Сторонние компоненты](THIRD_PARTY_NOTICES.md) · [English](THIRD_PARTY_NOTICES_EN.md)
 
 ## Участие в проекте
 
