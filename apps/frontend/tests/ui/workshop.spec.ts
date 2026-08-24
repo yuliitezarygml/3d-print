@@ -1,5 +1,25 @@
 import { expect, test } from "@playwright/test";
 
+test("публичная страница знакомит клиента с мастерской", async ({ page }) => {
+  const mediaResponses: number[] = [];
+  page.on("response", (response) => {
+    if (response.url().includes("/media/about-")) mediaResponses.push(response.status());
+  });
+
+  await page.goto("/about");
+  await expect(page.getByRole("heading", { name: /Идея становится/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Рассчитать печать/ })).toHaveAttribute("href", "/request");
+  await expect(page.getByRole("heading", { name: /четыре понятных шага/ })).toBeVisible();
+  await expect(page.getByText("Bambu Lab X1 Carbon")).toBeVisible();
+  await expect(page.getByLabel("Код заказа")).toBeVisible();
+  await expect(page.locator("video")).toHaveCount(3);
+  await expect.poll(() => mediaResponses.some((status) => status >= 200 && status < 400)).toBeTruthy();
+
+  await page.getByLabel("Код заказа").fill("MFHP73PH7K");
+  await page.getByRole("button", { name: "Открыть заказ" }).click();
+  await expect(page).toHaveURL(/\/track\/MFHP73PH7K$/);
+});
+
 test("администратор входит и открывает основные рабочие разделы", async ({ page }) => {
   await page.goto("/login");
   await page.getByRole("button", { name: /Войти/ }).click();
