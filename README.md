@@ -266,6 +266,7 @@ node scripts/sync-printer-catalog.mjs \
 
 - [Подробная установка и настройка](docs/SETUP_RU.md)
 - [Пошаговое руководство пользователя](docs/USER_GUIDE_RU.md)
+- [Настройка видимости и рекомендаций GitHub](docs/GITHUB_VISIBILITY_RU.md)
 - [Как внести вклад](CONTRIBUTING.md)
 - [Политика безопасности](SECURITY.md)
 - [Сторонние компоненты](THIRD_PARTY_NOTICES.md)
