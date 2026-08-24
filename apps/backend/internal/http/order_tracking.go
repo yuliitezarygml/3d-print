@@ -61,12 +61,13 @@ type trackedOrder struct {
 	Notes         string         `json:"notes"`
 	Progress      int            `json:"progress"`
 	Models        []trackedModel `json:"models"`
+	CompanyName   string         `json:"-"`
 	PublicBaseURL string         `json:"-"`
 }
 
 func (s *Server) loadTrackedOrder(ctx context.Context, code string) (trackedOrder, error) {
 	var order trackedOrder
-	err := s.db.QueryRow(ctx, `SELECT o.number,o.tracking_code,o.status,o.selling_price,o.paid_amount,o.selling_price-o.paid_amount,s.currency,c.name,o.deadline,o.created_at,COALESCE(o.notes,''),s.public_base_url FROM orders o LEFT JOIN customers c ON c.id=o.customer_id CROSS JOIN settings s WHERE upper(o.tracking_code)=upper($1)`, strings.TrimSpace(code)).Scan(&order.Number, &order.TrackingCode, &order.Status, &order.SellingPrice, &order.PaidAmount, &order.BalanceDue, &order.Currency, &order.CustomerName, &order.Deadline, &order.CreatedAt, &order.Notes, &order.PublicBaseURL)
+	err := s.db.QueryRow(ctx, `SELECT o.number,o.tracking_code,o.status,o.selling_price,o.paid_amount,o.selling_price-o.paid_amount,s.currency,c.name,o.deadline,o.created_at,COALESCE(o.notes,''),s.company_name,s.public_base_url FROM orders o LEFT JOIN customers c ON c.id=o.customer_id CROSS JOIN settings s WHERE upper(o.tracking_code)=upper($1)`, strings.TrimSpace(code)).Scan(&order.Number, &order.TrackingCode, &order.Status, &order.SellingPrice, &order.PaidAmount, &order.BalanceDue, &order.Currency, &order.CustomerName, &order.Deadline, &order.CreatedAt, &order.Notes, &order.CompanyName, &order.PublicBaseURL)
 	if err != nil {
 		return trackedOrder{}, errors.New("order not found")
 	}

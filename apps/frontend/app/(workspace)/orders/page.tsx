@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Box, Check, Copy, ExternalLink, Plus } from "lucide-react";
-import { api, money } from "@/lib/api";
+import { Box, Check, Copy, ExternalLink, FileDown, Plus } from "lucide-react";
+import { api, downloadAuthenticated, money } from "@/lib/api";
 import { ErrorNote, Modal, PageHeader, Status } from "@/components/ui";
 
 type OrderModel={id:string;name:string;originalFilename:string;previewUrl?:string};
@@ -18,6 +18,7 @@ const statusOptions=[["NEW","Заказ принят"],["CONFIRMED","Подтв�
 export default function Orders(){
   const [open,setOpen]=useState(false);
   const [created,setCreated]=useState<CreatedOrder|null>(null);
+  const [receiptError,setReceiptError]=useState<unknown>(null);
   const queryClient=useQueryClient();
   const orders=useQuery({queryKey:["orders"],queryFn:()=>api<Order[]>("/api/orders")});
   const customers=useQuery({queryKey:["customers"],queryFn:()=>api<Customer[]>("/api/customers")});
@@ -27,12 +28,12 @@ export default function Orders(){
   return <>
     <PageHeader eyebrow="ПРОДАЖИ" title="Заказы" description="У каждого заказа есть безопасный код, страница отслеживания и прикреплённые модели." actions={<button className="button primary" onClick={()=>setOpen(true)}><Plus size={17}/>Новый заказ</button>}/>
     {created&&<div className="tracking-created"><span className="tracking-created-icon"><Check/></span><div><strong>{created.number} создан</strong><p>Передайте клиенту код <b>{created.trackingCode}</b> — он работает на странице и в Telegram‑боте.</p></div><button className="button" onClick={()=>navigator.clipboard.writeText(created.trackingCode)}><Copy size={15}/>Копировать код</button><Link className="button primary" href={`/track/${created.trackingCode}`} target="_blank">Открыть <ExternalLink size={14}/></Link></div>}
-    <div className="order-grid">{orders.data?.map(order=><article className="order-card" key={order.id}>
+    {Boolean(receiptError)&&<ErrorNote error={receiptError}/>}<div className="order-grid">{orders.data?.map(order=><article className="order-card" key={order.id}>
       <div className="order-card-head"><div><p className="eyebrow">{order.number}</p><h2>{order.customerName||"Без клиента"}</h2></div><Status value={order.status}/></div>
       <div className="tracking-code"><span>Код клиента</span><strong>{order.trackingCode}</strong><button className="icon-button" title="Копировать код" onClick={()=>navigator.clipboard.writeText(order.trackingCode)}><Copy size={15}/></button></div>
       <div className="order-models">{order.models.length?order.models.map(model=><span key={model.id}><Box size={14}/>{model.name}</span>):<small>Модели пока не прикреплены</small>}</div>
       <div className="order-money"><div><span>Стоимость</span><strong>{money(order.sellingPrice)}</strong></div><div><span>Оплачено</span><strong>{money(order.paidAmount)}</strong></div><div><span>Остаток</span><strong>{money(order.balanceDue)}</strong></div></div>
-      <div className="order-card-actions"><select aria-label={`Статус ${order.number}`} value={order.status} onChange={event=>status.mutate({id:order.id,value:event.target.value})}>{statusOptions.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select><Link className="button" href={`/track/${order.trackingCode}`} target="_blank">Страница клиента <ExternalLink size={14}/></Link></div>
+      <div className="order-card-actions"><select aria-label={`Статус ${order.number}`} value={order.status} onChange={event=>status.mutate({id:order.id,value:event.target.value})}>{statusOptions.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select><button className="button" onClick={()=>{setReceiptError(null);downloadAuthenticated(`/api/orders/${order.id}/receipt.pdf`,`receipt-${order.number}.pdf`).catch(setReceiptError)}}><FileDown size={14}/>PDF-квитанция</button><Link className="button" href={`/track/${order.trackingCode}`} target="_blank">Страница клиента <ExternalLink size={14}/></Link></div>
     </article>)}</div>
     {open&&<Modal title="Новый заказ" size="wide" onClose={()=>setOpen(false)}><OrderForm customers={customers.data??[]} models={models.data??[]} busy={add.isPending} error={add.error} onCancel={()=>setOpen(false)} onSubmit={value=>add.mutate(value)}/></Modal>}
   </>;

@@ -53,6 +53,7 @@ func (s *Server) Routes() http.Handler {
 	r.Post("/api/auth/login", s.login)
 	r.Post("/api/auth/refresh", s.refresh)
 	r.Get("/api/public/track/{code}", s.publicTrackOrder)
+	r.Get("/api/public/track/{code}/receipt.pdf", s.publicOrderReceipt)
 	r.Get("/api/public/track/{code}/models/{id}/file", s.publicTrackedModelFile)
 	r.Get("/api/public/track/{code}/models/{id}/preview", s.publicTrackedModelPreview)
 
@@ -73,6 +74,7 @@ func (s *Server) Routes() http.Handler {
 		api.Post("/customers", s.createCustomer)
 		api.Get("/orders", s.listOrders)
 		api.Post("/orders", s.createOrder)
+		api.Get("/orders/{id}/receipt.pdf", s.orderReceipt)
 		api.Patch("/orders/{id}/status", s.updateOrderStatus)
 		api.Get("/models", s.listModels)
 		api.Post("/models/upload", s.uploadModel)

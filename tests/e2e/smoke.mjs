@@ -81,6 +81,16 @@ assert.match(order.trackingCode, /^[23456789A-HJ-NP-Z]{10}$/);
 const publicOrder = await request(`/api/public/track/${order.trackingCode}`);
 assert.equal(publicOrder.models.length, 1);
 assert.equal(publicOrder.models[0].id, model.id);
+const publicReceipt = await fetch(`${baseUrl}/api/public/track/${order.trackingCode}/receipt.pdf`);
+assert.equal(publicReceipt.status, 200);
+assert.equal(publicReceipt.headers.get("content-type"), "application/pdf");
+assert.match(publicReceipt.headers.get("content-disposition") ?? "", new RegExp(`receipt-${order.number}\\.pdf`));
+const publicReceiptBytes = new Uint8Array(await publicReceipt.arrayBuffer());
+assert.ok(publicReceiptBytes.length > 10_000);
+assert.equal(new TextDecoder().decode(publicReceiptBytes.slice(0, 5)), "%PDF-");
+const privateReceipt = await fetch(`${baseUrl}/api/orders/${order.id}/receipt.pdf`, { headers });
+assert.equal(privateReceipt.status, 200);
+assert.equal(privateReceipt.headers.get("content-type"), "application/pdf");
 
 const job = await request("/api/print-jobs", {
   method: "POST", headers,
@@ -122,6 +132,7 @@ console.log(JSON.stringify({
   order: order.number,
   trackingCode: order.trackingCode,
   publicStatus: trackedCompleted.status,
+  receiptPdfBytes: publicReceiptBytes.length,
   printerCatalogModels: catalog.total,
   model: model.originalFilename,
   job: job.id,

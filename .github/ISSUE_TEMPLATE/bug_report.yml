@@ -1,0 +1,56 @@
+name: Ошибка
+description: Сообщить о воспроизводимой проблеме PrintForge
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Спасибо! Не вставляйте токены, пароли, данные клиентов и приватные модели.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Что произошло?
+      description: Кратко опишите проблему.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: "1. Открыть…\n2. Нажать…\n3. Увидеть…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемый результат
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Версия или commit
+      placeholder: git rev-parse --short HEAD
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: ОС, браузер и Docker
+      placeholder: macOS, Chrome, Docker Desktop
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Безопасные логи или скриншоты
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Проверка
+      options:
+        - label: Я проверил существующие issues.
+          required: true
+        - label: Я удалил секреты и персональные данные.
+          required: true

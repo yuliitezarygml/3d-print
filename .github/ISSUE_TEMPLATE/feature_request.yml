@@ -1,0 +1,44 @@
+name: Новая функция
+description: Предложить улучшение для мастерской 3D-печати
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему решаем?
+      description: Опишите реальный сценарий мастерской.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Желаемый результат
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы
+  - type: dropdown
+    id: area
+    attributes:
+      label: Раздел
+      options:
+        - Заказы и клиенты
+        - Очередь и себестоимость
+        - Модели и файлы
+        - Склад
+        - Принтеры
+        - Telegram
+        - PDF и документы
+        - Развёртывание
+        - Другое
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Участие
+      options:
+        - label: Я готов помочь с реализацией или тестированием.
