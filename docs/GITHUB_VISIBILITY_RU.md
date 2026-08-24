@@ -83,8 +83,9 @@ GitHub не предоставляет публичный REST/GraphQL endpoint 
 git status
 git tag --sort=-version:refname | head
 node scripts/check-doc-links.mjs
-cd apps/backend && go test ./...
-cd apps/frontend && npm run lint && npm run build
+(cd apps/backend && go test ./...)
+(cd apps/backend && go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...)
+(cd apps/frontend && npm run lint && npm run build)
 ```
 
 На GitHub проверьте:

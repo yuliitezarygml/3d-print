@@ -3,7 +3,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
   backend:
-    image: golang:1.24-alpine
+    image: golang:1.25-alpine
     working_dir: /workspace/apps/backend
     command: ["go", "run", "./cmd/api"]
     volumes:

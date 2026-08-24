@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 COPY apps/backend/go.mod apps/backend/go.sum* ./
 RUN go mod download
@@ -13,4 +13,3 @@ RUN mkdir -p /data/uploads && chown -R app:app /data
 USER app
 EXPOSE 8080
 ENTRYPOINT ["/app/api"]
-

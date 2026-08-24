@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://github.com/yuliitezarygml/3d-print/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuliitezarygml/3d-print/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Go 1.24" src="https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white">
+  <img alt="Go 1.25" src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white">
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white">
   <img alt="PostgreSQL 16" src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white">
@@ -173,7 +173,7 @@ PDF — расчётная квитанция мастерской, **не фи�
 flowchart LR
     U[Администратор / клиент] -->|HTTP :80| N[Nginx]
     N --> F[Next.js 16 / React 19]
-    N --> B[Go 1.24 API / chi]
+    N --> B[Go 1.25 API / chi]
     B --> P[(PostgreSQL 16)]
     B --> V[(Uploads volume)]
     B --> T[Telegram Bot API]
@@ -216,8 +216,9 @@ npm run dev
 ## Тесты
 
 ```bash
-cd apps/backend && go test ./...
-cd apps/frontend && npm run lint && npm run build
+(cd apps/backend && go test ./...)
+(cd apps/backend && go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...)
+(cd apps/frontend && npm run lint && npm run build)
 docker compose config
 node tests/e2e/smoke.mjs
 ```

@@ -29,8 +29,8 @@ docker compose up --build -d
 ## Обязательные проверки
 
 ```bash
-cd apps/backend && gofmt -w . && go test ./...
-cd apps/frontend && npm ci && npm run lint && npm run build
+(cd apps/backend && gofmt -w . && go test ./...)
+(cd apps/frontend && npm ci && npm run lint && npm run build)
 docker compose config
 node tests/e2e/smoke.mjs
 ```
