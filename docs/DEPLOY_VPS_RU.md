@@ -45,7 +45,8 @@ JWT_SECRET=...
 ## 3. Запустите production-профиль
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.production.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.production.yml pull
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
 docker compose ps
 docker compose logs caddy --tail=100
 ```
@@ -79,7 +80,8 @@ S3_USE_SSL=true
 ```bash
 ./scripts/backup.sh
 git pull --ff-only
-docker compose -f docker-compose.yml -f docker-compose.production.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.production.yml pull
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d
 ```
 
 Backup содержит дамп PostgreSQL, manifest и локальные uploads. При `STORAGE_DRIVER=s3` объекты резервируются средствами провайдера S3/R2.

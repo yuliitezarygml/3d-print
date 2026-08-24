@@ -99,9 +99,19 @@ JWT_SECRET=paste-64-random-hex-characters-here
 ### 3. Запустите приложение
 
 ```bash
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 docker compose ps
 ```
+
+Готовые образы для `amd64` и `arm64` публикуются в GitHub Container Registry:
+
+```text
+ghcr.io/yuliitezarygml/3d-print-backend:latest
+ghcr.io/yuliitezarygml/3d-print-frontend:latest
+```
+
+Для локальной сборки из исходников используйте `docker compose up --build -d`. Каждый push в `main` автоматически публикует `latest` и неизменяемый тег `sha-<commit>`; релиз `v1.2.3` дополнительно создаёт теги `1.2.3` и `1.2`.
 
 Все постоянные сервисы должны перейти в состояние `healthy`. Затем откройте:
 

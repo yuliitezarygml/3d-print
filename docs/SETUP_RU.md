@@ -85,7 +85,7 @@ MAX_IMAGE_FILE_SIZE_MB=10
 
 ```bash
 docker compose pull
-docker compose up --build -d
+docker compose up -d
 docker compose ps
 ```
 
@@ -94,7 +94,7 @@ docker compose ps
 1. создаёт закрытую сеть PostgreSQL;
 2. запускает базу;
 3. применяет SQL-миграции ровно по одному разу;
-4. собирает Go backend и Next.js frontend;
+4. запускает готовые Go backend и Next.js frontend из GitHub Container Registry;
 5. запускает Nginx на порту `80`.
 
 Ожидаемое состояние:
@@ -203,7 +203,8 @@ Restore выполняется с `--clean --if-exists` и заменяет со
 git status
 ./scripts/backup.sh
 git pull --ff-only origin main
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 docker compose ps
 ```
 
@@ -285,4 +286,4 @@ Vercel-развёртывание пока отложено: frontend можно
 docker compose down -v
 ```
 
-После этого следующий `docker compose up --build -d` создаст чистую демонстрационную базу.
+После этого следующий `docker compose up -d` создаст чистую демонстрационную базу. Если нужно заново собрать приложение из исходников, добавьте `--build`.

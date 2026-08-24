@@ -33,6 +33,7 @@ services:
     networks: [internal]
 
   backend:
+    image: ${PRINTFORGE_BACKEND_IMAGE:-ghcr.io/yuliitezarygml/3d-print-backend:latest}
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
@@ -69,6 +70,7 @@ services:
     networks: [internal, public]
 
   frontend:
+    image: ${PRINTFORGE_FRONTEND_IMAGE:-ghcr.io/yuliitezarygml/3d-print-frontend:latest}
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
