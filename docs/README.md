@@ -5,6 +5,7 @@ Choose a language / Выберите язык:
 | Topic / Раздел | Русский | English |
 |---|---|---|
 | Installation and configuration / Установка и настройка | [SETUP_RU.md](SETUP_RU.md) | [SETUP_EN.md](SETUP_EN.md) |
+| Desktop app: macOS and Windows / Desktop-приложение | [DESKTOP_RU.md](DESKTOP_RU.md) | [DESKTOP_EN.md](DESKTOP_EN.md) |
 | User guide / Руководство пользователя | [USER_GUIDE_RU.md](USER_GUIDE_RU.md) | [USER_GUIDE_EN.md](USER_GUIDE_EN.md) |
 | VPS and HTTPS deployment / VPS и HTTPS | [DEPLOY_VPS_RU.md](DEPLOY_VPS_RU.md) | [DEPLOY_VPS_EN.md](DEPLOY_VPS_EN.md) |
 | Release 0.1.0 / Релиз 0.1.0 | [RELEASE_0.1.0_RU.md](RELEASE_0.1.0_RU.md) | [RELEASE_0.1.0_EN.md](RELEASE_0.1.0_EN.md) |

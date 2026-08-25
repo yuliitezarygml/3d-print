@@ -138,6 +138,20 @@ docker compose logs --tail=100
 
 Полная инструкция для macOS, Windows и Linux, настройка переменных, Telegram, backup, обновление и диагностика: **[docs/SETUP_RU.md](docs/SETUP_RU.md)**.
 
+## Desktop-приложение без сервера
+
+В [apps/desktop](apps/desktop) находится отдельная локальная админка на Tauri 2 + Next.js. Бизнес-логика, SQLite, расчёт электричества и себестоимости, импорт моделей, производство и PDF-квитанции реализованы на Rust. Авторизации и Telegram нет: программа сразу готова к работе и не требует Docker, PostgreSQL, Go API, домена или интернета.
+
+```bash
+. "$HOME/.cargo/env"
+cd apps/desktop
+npm ci
+npm run desktop:dev       # окно приложения + живые логи
+npm run desktop:build     # установщик текущей ОС
+```
+
+В установщик включены 387 профилей и изображений принтеров OrcaSlicer/Bambu Studio, включая Bambu Lab, Creality и Anycubic. Подробная настройка, пути базы и сборка Windows/macOS: **[docs/DESKTOP_RU.md](docs/DESKTOP_RU.md)**.
+
 ## Как начать работу
 
 1. В «Настройки» укажите название мастерской, валюту, тариф за кВт·ч и публичный URL.
@@ -201,6 +215,7 @@ flowchart LR
 ```text
 apps/backend/          Go API, migrations, PDF и Telegram
 apps/frontend/         Next.js интерфейс и 3D-превью
+apps/desktop/          Tauri + Next.js локальная админка, Rust + SQLite
 config/nginx/          reverse proxy, единая точка входа :80
 scripts/               миграции, backup, restore, импорт каталога
 tests/e2e/             полный пользовательский smoke-сценарий
@@ -290,6 +305,7 @@ node scripts/sync-printer-catalog.mjs \
 
 - [Все документы: Русский / English](docs/README.md)
 - [Подробная установка и настройка](docs/SETUP_RU.md) · [English](docs/SETUP_EN.md)
+- [Desktop для macOS и Windows](docs/DESKTOP_RU.md) · [English](docs/DESKTOP_EN.md)
 - [Публикация на VPS с HTTPS и настройка R2/S3](docs/DEPLOY_VPS_RU.md) · [English](docs/DEPLOY_VPS_EN.md)
 - [Что вошло в v0.1.0](docs/RELEASE_0.1.0_RU.md) · [English](docs/RELEASE_0.1.0_EN.md)
 - [Пошаговое руководство пользователя](docs/USER_GUIDE_RU.md) · [English](docs/USER_GUIDE_EN.md)

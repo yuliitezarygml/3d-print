@@ -133,6 +133,20 @@ docker compose logs --tail=100
 
 See the **[complete setup guide](docs/SETUP_EN.md)** for macOS, Windows, Linux, environment variables, Telegram, backup, updates, and troubleshooting.
 
+## Serverless desktop application
+
+[apps/desktop](apps/desktop) contains a separate Tauri 2 + Next.js local administration application. Rust implements business logic, SQLite persistence, electricity/cost calculations, model import, production, and PDF receipts. It has no authentication or Telegram integration and does not require Docker, PostgreSQL, the Go API, a domain, or internet access.
+
+```bash
+. "$HOME/.cargo/env"
+cd apps/desktop
+npm ci
+npm run desktop:dev       # native window and live logs
+npm run desktop:build     # installer for the current OS
+```
+
+The installer bundles 387 OrcaSlicer/Bambu Studio printer profiles and images, including Bambu Lab, Creality, and Anycubic. See **[docs/DESKTOP_EN.md](docs/DESKTOP_EN.md)** for setup, data paths, and Windows/macOS builds.
+
 ## First workflow
 
 1. In Settings, enter the workshop name, currency, electricity tariff, and public URL.
@@ -182,6 +196,7 @@ flowchart LR
 ```text
 apps/backend/          Go API, migrations, PDF, and Telegram
 apps/frontend/         Next.js interface and 3D preview
+apps/desktop/          Tauri + Next.js local admin, Rust + SQLite
 config/nginx/          reverse proxy and shared :80 entrypoint
 scripts/               migrations, backup, restore, catalog import
 tests/e2e/             complete API smoke journey
@@ -258,6 +273,7 @@ Completing a job is transactional: it records actual values, deducts filament, c
 
 - [All documents: Русский / English](docs/README.md)
 - [Detailed setup and configuration](docs/SETUP_EN.md)
+- [Desktop for macOS and Windows](docs/DESKTOP_EN.md)
 - [VPS deployment with HTTPS and R2/S3](docs/DEPLOY_VPS_EN.md)
 - [Version 0.1.0 release notes](docs/RELEASE_0.1.0_EN.md)
 - [Step-by-step user guide](docs/USER_GUIDE_EN.md)
