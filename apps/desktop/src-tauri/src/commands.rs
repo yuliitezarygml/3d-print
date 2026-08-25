@@ -9,8 +9,8 @@ use crate::cost;
 use crate::db::Database;
 use crate::models::{
     AppInfo, CostBreakdown, CostInput, Customer, Dashboard, ImportModel, ModelAsset, NewCustomer,
-    NewOrder, NewPrintJob, NewPrinter, NewSpool, Order, PrintJob, Printer, PrinterCatalogModel,
-    ReceiptResult, Settings, Spool,
+    NewOrder, NewOrderEvent, NewPrintJob, NewPrinter, NewSpool, Order, OrderEvent, PrintJob,
+    Printer, PrinterCatalogModel, ReceiptResult, Settings, Spool,
 };
 use crate::receipt;
 
@@ -125,6 +125,28 @@ pub fn create_print_job(
 #[tauri::command]
 pub fn complete_print_job(state: State<'_, AppState>, id: String) -> Result<PrintJob, String> {
     with_database(state, |database| database.complete_print_job(&id))
+}
+
+#[tauri::command]
+pub fn start_print_job(state: State<'_, AppState>, id: String) -> Result<PrintJob, String> {
+    with_database(state, |database| database.start_print_job(&id))
+}
+
+#[tauri::command]
+pub fn list_order_events(
+    state: State<'_, AppState>,
+    order_id: String,
+) -> Result<Vec<OrderEvent>, String> {
+    with_database(state, |database| database.order_events(&order_id))
+}
+
+#[tauri::command]
+pub fn add_order_event(
+    state: State<'_, AppState>,
+    order_id: String,
+    input: NewOrderEvent,
+) -> Result<OrderEvent, String> {
+    with_database(state, |database| database.add_order_event(&order_id, input))
 }
 
 #[tauri::command]

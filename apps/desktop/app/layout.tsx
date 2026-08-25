@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
-import "./globals.css";
-import "./desktop-extra.css";
+import "../../frontend/app/globals.css";
+import "./desktop-admin.css";
 
 const inter = Inter({ subsets:["latin","cyrillic"], variable:"--font-body" });
 const manrope = Manrope({ subsets:["latin","cyrillic"], variable:"--font-display" });

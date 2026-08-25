@@ -255,6 +255,7 @@ mod tests {
                 selling_price: 355.87,
                 paid_amount: 150.0,
                 created_at: "2026-08-24T14:39:50+03:00".into(),
+                models: Vec::new(),
             },
             &Settings {
                 company_name: "PrintForge Studio".into(),

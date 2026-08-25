@@ -1,21 +1,24 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type Dashboard = { activeOrders:number; queuedJobs:number; availablePrinters:number; lowStockSpools:number; revenue:number; outstanding:number; currency:string };
-export type Customer = { id:string; name:string; company?:string; phone?:string; email?:string };
-export type Printer = { id:string; name:string; manufacturer:string; model:string; status:string; powerWatts:number; catalogKey?:string; buildXMm?:number; buildYMm?:number; buildZMm?:number; purchasePrice:number };
-export type Spool = { id:string; code:string; material:string; colorName:string; colorHex:string; remainingGrams:number; pricePerGram:number };
-export type Order = { id:string; number:string; trackingCode:string; customerId?:string; customerName:string; title:string; status:string; deadline?:string; sellingPrice:number; paidAmount:number; createdAt:string };
+export type DashboardPrinter = { id:string;name:string;manufacturer:string;status:string;orderNumber?:string;modelName?:string };
+export type Dashboard = { activeOrders:number; queuedJobs:number; availablePrinters:number; printingPrinters:number; maintenancePrinters:number; lowStockSpools:number; spoolCount:number; filamentGrams:number; stockValue:number; revenue:number; outstanding:number; productionCost:number; profit:number; electricityCost:number; currency:string; printers:DashboardPrinter[] };
+export type Customer = { id:string; name:string; company?:string; phone?:string; email?:string; orderCount:number;totalAmount:number;modelCount:number };
+export type Printer = { id:string; name:string; manufacturer:string; model:string; status:string; powerWatts:number; catalogKey?:string; buildXMm?:number; buildYMm?:number; buildZMm?:number; purchasePrice:number;depreciationHours:number;totalHours:number;nozzleMm:number;serialNumber?:string;location?:string;imageUrl?:string };
+export type Spool = { id:string; code:string; material:string; colorName:string; colorHex:string; remainingGrams:number;initialGrams:number;purchasePrice:number;pricePerGram:number;stockValue:number;manufacturer:string;productName:string;supplier?:string;status:string };
+export type OrderModel={id:string;name:string;originalFilename:string;format:string};
+export type Order = { id:string; number:string; trackingCode:string; customerId?:string; customerName:string; title:string; status:string; deadline?:string; sellingPrice:number; paidAmount:number; createdAt:string;models:OrderModel[] };
 export type Settings = { companyName:string; currency:string; electricityPricePerKwh:number; machineRatePerHour:number; labourRatePerHour:number; defaultMarkupPercent:number; lowStockThresholdGrams:number };
 export type CostInput = { printMinutes:number; filamentGrams:number; filamentPricePerGram:number; powerWatts:number; electricityPricePerKwh:number; machineRatePerHour:number; depreciationPerHour:number; operatorHours:number; labourRatePerHour:number; postProcessingCost:number; packagingCost:number; otherCost:number; markupPercent:number };
 export type CostBreakdown = { materialCost:number; energyKwh:number; electricityCost:number; machineCost:number; depreciationCost:number; labourCost:number; postProcessingCost:number; packagingCost:number; otherCost:number; totalCost:number; markupAmount:number; suggestedPrice:number };
-export type NewOrder = { customerId?:string; title:string; deadline?:string; sellingPrice:number; paidAmount:number; notes?:string };
+export type NewOrder = { customerId?:string; title:string; deadline?:string; sellingPrice:number; paidAmount:number; notes?:string;modelIds:string[] };
 export type NewCustomer = { name:string; company?:string; phone?:string; email?:string };
 export type NewSpool = { code:string; manufacturer:string; productName:string; material:string; colorName:string; colorHex:string; initialGrams:number; purchasePrice:number; supplier?:string };
-export type NewPrinter = { catalogKey?:string; name:string; manufacturer:string; model:string; powerWatts:number; buildXMm?:number; buildYMm?:number; buildZMm?:number; purchasePrice:number };
+export type NewPrinter = { catalogKey?:string; name:string; manufacturer:string; model:string; powerWatts:number; buildXMm?:number; buildYMm?:number; buildZMm?:number; purchasePrice:number;depreciationHours?:number;nozzleMm?:number;serialNumber?:string;location?:string };
 export type PrinterCatalogModel = { key:string; manufacturer:string; model:string; fullName:string; technology:string; nozzleDiameters:number[]; buildXMm?:number; buildYMm?:number; buildZMm?:number; imageUrl?:string; defaultMaterials:string[]; profileUrl:string };
-export type ModelAsset = { id:string; customerId?:string; customerName:string; name:string; originalFilename:string; format:string; fileSizeBytes:number; estimatedPrintMinutes?:number; estimatedFilamentGrams?:number; createdAt:string };
-export type PrintJob = { id:string; orderId?:string; orderNumber?:string; printerId?:string; printerName?:string; spoolId?:string; spoolCode?:string; status:string; printMinutes:number; filamentGrams:number; scheduledStart?:string; scheduledEnd?:string; totalCost:number; createdAt:string };
-export type NewPrintJob = { orderId?:string; printerId?:string; spoolId?:string; printMinutes:number; filamentGrams:number; scheduledStart?:string; scheduledEnd?:string; totalCost:number };
+export type ModelAsset = { id:string; customerId?:string; customerName:string; name:string; originalFilename:string; format:string; fileSizeBytes:number; estimatedPrintMinutes?:number; estimatedFilamentGrams?:number; previewPath?:string;createdAt:string };
+export type PrintJob = { id:string; orderId?:string; orderNumber?:string; printerId?:string; printerName?:string; spoolId?:string; spoolCode?:string;modelId?:string;modelName?:string;status:string; printMinutes:number; filamentGrams:number; scheduledStart?:string; scheduledEnd?:string; totalCost:number;electricityCost:number;energyKwh:number;suggestedPrice:number;createdAt:string };
+export type NewPrintJob = { orderId?:string; printerId?:string; spoolId?:string;modelId?:string;printMinutes:number; filamentGrams:number; scheduledStart?:string; scheduledEnd?:string; totalCost:number;electricityCost?:number;energyKwh?:number;suggestedPrice?:number };
+export type OrderEvent={id:string;orderId:string;eventType:string;title:string;message:string;createdAt:string};
 export type ReceiptResult = { path:string; filename:string };
 export type AppInfo = { dataDirectory:string; databasePath:string; catalogModels:number; appVersion:string };
 
@@ -35,6 +38,9 @@ export const desktop = {
   printJobs: () => invoke<PrintJob[]>("list_print_jobs"),
   createPrintJob: (input:NewPrintJob) => invoke<PrintJob>("create_print_job", { input }),
   completePrintJob: (id:string) => invoke<PrintJob>("complete_print_job", { id }),
+  startPrintJob: (id:string) => invoke<PrintJob>("start_print_job", { id }),
+  orderEvents: (orderId:string) => invoke<OrderEvent[]>("list_order_events", { orderId }),
+  addOrderEvent: (orderId:string,input:{title:string;message?:string}) => invoke<OrderEvent>("add_order_event", { orderId,input }),
   settings: () => invoke<Settings>("get_settings"),
   appInfo: () => invoke<AppInfo>("app_info"),
   openDataDirectory: () => invoke<void>("open_data_directory"),
